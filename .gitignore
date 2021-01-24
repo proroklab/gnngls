@@ -1,0 +1,6 @@
+*.bin
+*.pkl
+*.txt
+.ipynb_checkpoints
+__pycache__
+runs
