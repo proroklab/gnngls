@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 if [ "$#" -ne 2 ]; then
     echo "usage: sync.sh <file or folder> <direction>"
     return 1

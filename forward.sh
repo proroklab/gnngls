@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 if [ "$#" -ne 1 ]; then
     echo "specify a port."
     return 1
