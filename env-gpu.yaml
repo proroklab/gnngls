@@ -1,18 +1,17 @@
-name: dgl
+name: dgl-gpu
 channels:
   - defaults
 dependencies:
   - numpy
   - pytorch
   - torchvision
-  - cpuonly
+  - cudatoolkit=10.1
   - torchaudio
-  - tensorflow
+  - tensorflow-gpu
   - tensorboard
-  - dgl
+  - dgl-cuda10.1
   - scikit-learn
   - tqdm
   - matplotlib
   - jupyter
-prefix: /home/ben/miniconda3/envs/dgl
-
+prefix: /home/bh511/miniconda3/envs/dgl-gpu
