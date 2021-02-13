@@ -6,22 +6,10 @@ backend = 'pytorch'
 os.environ['DGLBACKEND'] = backend
 
 import torch
-import dgl
-import networkx as nx
-import tqdm.auto as tqdm
-import numpy as np
-import pathlib
-import argparse
-import datetime
-import json
-
 import torch.nn as nn
 import torch.nn.functional as F
 import dgl.nn
-
-from torch.utils.tensorboard import SummaryWriter
-from torch.utils.data import DataLoader
-from sklearn.metrics import accuracy_score
+import numpy as np
 
 
 class Net(nn.Module):
@@ -61,6 +49,20 @@ class Net(nn.Module):
 
 
 if __name__ == '__main__':
+
+    import dgl
+    import networkx as nx
+    import tqdm.auto as tqdm
+    import pathlib
+    import argparse
+    import datetime
+    import json
+
+    from torch.utils.tensorboard import SummaryWriter
+    from torch.utils.data import DataLoader
+    from sklearn.metrics import accuracy_score
+
+
     parser = argparse.ArgumentParser(description='Run an experiment')
     parser.add_argument('data_dir', type=pathlib.Path, help='Where to load dataset')
     parser.add_argument('model_dir', type=pathlib.Path, help='Where to save trained model')
@@ -101,6 +103,12 @@ if __name__ == '__main__':
     timestamp = datetime.datetime.now().strftime('%b%d_%H-%M-%S')
     tb_dir = args.tb_dir / f'{run_name}_{timestamp}'
     writer = SummaryWriter(tb_dir)
+
+    # early stopping
+    best_score = None
+    min_delta = 1e-3
+    counter = 0
+    patience = 10
 
     pbar = tqdm.trange(args.n_epochs)
     for epoch in pbar:
@@ -151,11 +159,23 @@ if __name__ == '__main__':
             'Validation Loss': '{:.4f}'.format(val_loss),
         })
 
+        if best_score is None:
+            best_score = val_loss
+        elif val_loss < best_score - min_delta:
+            best_score = val_loss
+            counter = 0
+        else:
+            counter += 1
+
+        if counter >= patience:
+            pbar.close()
+            break
+
         lr_scheduler.step()
         # writer.flush()
 
     writer.close()
-    json.dump({
+    '''json.dump({
         'config': vars(args),
         'results': {
             'validation': {
@@ -166,5 +186,5 @@ if __name__ == '__main__':
                 'loss': float(epoch_loss),
             }
         }
-    }, open(args.model_dir / f'summary_{run_name}.json', 'w'))
+    }, open(args.model_dir / f'summary_{run_name}.json', 'w'))'''
     torch.save(net.state_dict(), args.model_dir / f'net_{run_name}.bin')
