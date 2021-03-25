@@ -82,15 +82,15 @@ def set_features(G):
 
     depot_weight = get_depot_weight(G, 0)
 
-    sp_betweenness = nx.edge_betweenness_centrality(G)
+    sp_betweenness = nx.edge_betweenness_centrality(G, weight='weight')
 
-    cf_betweenness = nx.edge_current_flow_betweenness_centrality(G)
+    cf_betweenness = nx.edge_current_flow_betweenness_centrality(G, weight='weight')
 
-    sp_closeness = nx.closeness_centrality(G)
+    sp_closeness = nx.closeness_centrality(G, distance='weight')
 
-    cf_closeness = nx.current_flow_closeness_centrality(G)
+    cf_closeness = nx.current_flow_closeness_centrality(G, weight='weight')
 
-    clustering = nx.clustering(G)
+    clustering = nx.clustering(G, weight='weight')
 
     # hate this
     get_from_edge_dict = lambda d, k: d[k] if k in d else d[tuple(reversed(k))]
@@ -100,25 +100,26 @@ def set_features(G):
 
         G.edges[e]['features'] = np.array([
             G.edges[e]['weight'],
-            get_from_edge_dict(in_greedy_solution, e),
             knn[i][j],
             knn[j][i],
             knn[i][j] == knn[j][i],
             knn[i][j] <= 0.1*len(G.nodes) or knn[j][i] <= 0.1*len(G.nodes),
             knn[i][j] <= 0.2*len(G.nodes) or knn[j][i] <= 0.2*len(G.nodes),
             knn[i][j] <= 0.3*len(G.nodes) or knn[j][i] <= 0.3*len(G.nodes),
+            get_from_edge_dict(in_greedy_solution, e),
             get_from_edge_dict(min_degree_graph, e),
-            depot_weight[i],
-            depot_weight[j],
             get_from_edge_dict(sp_betweenness, e),
             get_from_edge_dict(cf_betweenness, e),
-            sp_closeness[i],
-            sp_closeness[j],
-            cf_closeness[i],
-            cf_closeness[j],
-            clustering[i],
-            clustering[j],
-            regret[e],
+        ], dtype=np.float32)
+
+        G.edges[e]['regret'] = regret[e]
+
+    for n in G.nodes:
+        G.nodes[n]['features'] = np.array([
+            depot_weight[n],
+            sp_closeness[n],
+            cf_closeness[n],
+            clustering[n],
         ], dtype=np.float32)
 
     return G
@@ -141,37 +142,12 @@ def get_solved_instances(n_nodes, n_instances):
 
         yield G
 
-def to_dgl_graph(scaler, path):
-    G = nx.read_gpickle(path)
-    lG = nx.line_graph(G)
-
-    features = np.vstack([G.edges[e]['features'] for e in lG.nodes])
-    features_scaled = scaler.transform(features)
-
-    x = {}
-    y = {}
-    for e, row in zip(lG.nodes, features_scaled):
-        x[e] = row[:-1]
-        y[e] = row[-1]
-
-    nx.set_node_attributes(lG, x, 'x')
-    nx.set_node_attributes(lG, y, 'regret')
-    nx.set_node_attributes(lG, nx.get_edge_attributes(G, 'in_solution'), 'in_solution')
-
-    H = dgl.from_networkx(lG, node_attrs=['x', 'in_solution', 'regret'])
-    return H
-
 if __name__ == '__main__':
     import tqdm.auto as tqdm
     import pathlib
     import uuid
     import argparse
-    import pickle
     import multiprocessing as mp
-    import functools
-
-    from sklearn.preprocessing import MinMaxScaler
-    from sklearn.model_selection import train_test_split
 
     parser = argparse.ArgumentParser(description='Generate a dataset.')
     parser.add_argument('n_samples', type=int)
@@ -188,35 +164,5 @@ if __name__ == '__main__':
     instance_gen = get_solved_instances(args.n_nodes, args.n_samples)
     for G in pool.imap_unordered(set_features, instance_gen):
         nx.write_gpickle(G, args.dir / f'{uuid.uuid4().hex}.pkl')
-
-    # train test split
-    data_set = list(args.dir.glob('*.pkl'))
-
-    train_set, test_set = train_test_split(data_set, train_size=0.8, shuffle=True)
-    train_set, val_set = train_test_split(train_set, train_size=0.8, shuffle=True)
-
-    for data_set, file in zip([train_set, val_set, test_set], ['train.txt', 'val.txt', 'test.txt']):
-        with open(args.dir / file, 'w') as data_file:
-            for path in data_set:
-                data_file.write(str(path.relative_to(args.dir)) + '\n')
-
-    # normalise
-    scaler = MinMaxScaler()
-
-    for instance_path in tqdm.tqdm(train_set):
-        G = nx.read_gpickle(instance_path)
-        features = np.vstack([G.edges[e]['features'] for e in G.edges])
-        scaler.partial_fit(np.vstack(features))
-
-    pickle.dump(scaler, open(args.dir / 'scaler.pkl', 'wb'))
-
-    f = functools.partial(to_dgl_graph, scaler)
-
-    train_graphs = [G for G in pool.imap_unordered(f, train_set)]
-    dgl.save_graphs(str(args.dir / 'train_graphs.bin'), train_graphs)
-
-    val_graphs = [G for G in pool.imap_unordered(f, val_set)]
-    dgl.save_graphs(str(args.dir / 'val_graphs.bin'), val_graphs)
-
     pool.close()
     pool.join()
