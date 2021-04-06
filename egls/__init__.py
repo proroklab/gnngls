@@ -1,6 +1,8 @@
 import numpy as np
 import networkx as nx
 
+from . import models
+
 def tour_cost(G, tour, weight='weight'):
     c = 0
     for e in zip(tour[:-1], tour[1:]):

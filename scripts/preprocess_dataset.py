@@ -28,17 +28,21 @@ def prepare_line_graph(scalers, path):
 
 
     lG = nx.line_graph(G)
-    for e in lG.nodes:
-        i, j = e
-        lG.nodes[e]['in_solution'] = G.edges[e]['in_solution']
-        lG.nodes[e]['regret'] = regret[e2i[e]]
-        lG.nodes[e]['features'] = np.hstack((
+    for n in lG.nodes:
+        i, j = n
+        lG.nodes[n]['in_solution'] = np.array([G.edges[n]['in_solution']])
+        lG.nodes[n]['regret'] = regret[e2i[n]]
+        lG.nodes[n]['features'] = np.hstack((
             nfeats[n2i[i]],
-            efeats[e2i[e]],
+            efeats[e2i[n]],
             nfeats[n2i[j]]
         ))
 
-    H = dgl.from_networkx(lG, node_attrs=['features', 'regret', 'in_solution'])
+    # an edge is in the line graph is a node, but networkx makes a tuple of edges
+    for e in lG.edges:
+        lG.edges[e]['is_depot'] = np.array([0 in e[0] and 0 in e[1]])
+
+    H = dgl.from_networkx(lG.to_directed(), node_attrs=['features', 'regret', 'in_solution'], edge_attrs=['is_depot'])
     return H
 
 
@@ -53,7 +57,7 @@ if __name__ == '__main__':
     import pickle
     import functools
 
-    # need this wrapper when using DGL (ancdata error)
+    # need this wrapper when using torch (ancdata error)
     # import torch.multiprocessing as mp
     # mp.set_sharing_strategy('file_system')
 
@@ -106,6 +110,7 @@ if __name__ == '__main__':
         f = functools.partial(prepare_graph, scalers)
 
     print('Applying scalers...')
+    # TODO: multiprocessing seens to break when using torch...
     # pool = mp.Pool(processes=None)
 
     train_graphs = [f(G) for G in tqdm.tqdm(train_set)]
