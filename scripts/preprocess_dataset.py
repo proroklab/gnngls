@@ -37,12 +37,13 @@ def prepare_line_graph(scalers, path):
             efeats[e2i[n]],
             nfeats[n2i[j]]
         ))
+        lG.nodes[n]['e'] = n # store edge id
 
     # an edge is in the line graph is a node, but networkx makes a tuple of edges
     for e in lG.edges:
         lG.edges[e]['is_depot'] = np.array([0 in e[0] and 0 in e[1]])
 
-    H = dgl.from_networkx(lG.to_directed(), node_attrs=['features', 'regret', 'in_solution'], edge_attrs=['is_depot'])
+    H = dgl.from_networkx(lG.to_directed(), node_attrs=['features', 'regret', 'in_solution', 'e'], edge_attrs=['is_depot'])
     return H
 
 

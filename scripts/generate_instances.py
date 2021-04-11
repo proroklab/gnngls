@@ -10,14 +10,6 @@ import numpy as np
 import itertools
 
 
-def tour_to_edge_attribute(G, tour):
-    in_tour = {}
-    tour_edges = list(zip(tour[:-1], tour[1:]))
-    for e in G.edges:
-        in_tour[e] = e in tour_edges or tuple(reversed(e)) in tour_edges
-    return in_tour
-
-
 def get_regret(G, optimal_cost):
     regret = {}
 
