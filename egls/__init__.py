@@ -1,5 +1,4 @@
 import numpy as np
-import networkx as nx
 
 def tour_to_edge_attribute(G, tour):
     in_tour = {}
@@ -68,6 +67,7 @@ def fixed_edge_tour(G, e, scale=1e3, lkh_path='LKH', **kwargs):
     return tour
 
 def plot_edge_attribute(G, attr, ax, **kwargs):
+    import networkx as nx
     from matplotlib import colors
 
     cmap_colors = np.zeros((100, 4))

@@ -53,6 +53,7 @@ if __name__ == '__main__':
     import dgl
     import networkx as nx
     import tqdm.auto as tqdm
+    import numpy as np
     import pathlib
     import argparse
     import datetime
@@ -108,7 +109,7 @@ if __name__ == '__main__':
     best_score = None
     min_delta = 1e-3
     counter = 0
-    patience = 10
+    patience = 15
 
     pbar = tqdm.trange(args.n_epochs)
     for epoch in pbar:

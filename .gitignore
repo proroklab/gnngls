@@ -7,3 +7,5 @@
 *.png
 models/
 egls.egg-info/
+*.sublime-project
+*.sublime-workspace

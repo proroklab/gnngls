@@ -1,4 +1,5 @@
 import numpy as np
+import networkx as nx
 
 from . import tour_cost, operators
 
@@ -103,10 +104,10 @@ def local_search(G, init_tour, init_cost, weight='weight'):
     while improved:
         improved = False
 
-        for operator in [operators.two_opt_a2a, operators.relocate_a2a, operators.exchange_a2a]:
+        for operator in [operators.two_opt_a2a, operators.relocate_a2a]:
 
             for new_tour in operator(cur_tour):
-                new_cost = egls.tour_cost(G, new_tour, weight=weight)
+                new_cost = tour_cost(G, new_tour, weight=weight)
 
                 if new_cost < best_cost:
                     best_tour, best_cost = new_tour, new_cost
@@ -117,14 +118,16 @@ def local_search(G, init_tour, init_cost, weight='weight'):
 
     return best_tour, best_cost
 
-def guided_local_search(G, init_tour, init_cost, n_iters, weight='weight', guide='weight', perturbation_moves=30):
+def guided_local_search(G, init_tour, init_cost, n_iters, weight='weight', guides=['weight'], perturbation_moves=30):
     k = 0.1*init_cost/len(G.nodes)
     nx.set_edge_attributes(G, 0, 'penalty')
 
     cur_tour, cur_cost = local_search(G, init_tour, init_cost, weight)
     best_tour, best_cost = cur_tour, cur_cost
 
-    for _ in range(n_iters):
+    for iter_i in range(n_iters):
+        guide = guides[iter_i % len(guides)] # option change guide ever iteration (as in KGLS)
+
         # perturbation
         moves = 0
         while moves < perturbation_moves:
@@ -139,19 +142,19 @@ def guided_local_search(G, init_tour, init_cost, n_iters, weight='weight', guide
 
             G.edges[max_util_e]['penalty'] += 1.
 
-            cur_guided_cost = cur_cost + k*egls.tour_cost(G, cur_tour, weight='penalty')
+            cur_guided_cost = cur_cost + k*tour_cost(G, cur_tour, weight='penalty')
 
             # apply operator to edge
             for n in max_util_e:
                 if n != 0: # not the depot
                     i = cur_tour.index(n)
 
-                    for operator in [operators.two_opt_o2a, operators.relocate_o2a, operators.exchange_o2a]:
+                    for operator in [operators.two_opt_o2a, operators.relocate_o2a]:
                         moved = False
 
                         for new_tour in operator(cur_tour, i):
-                            new_cost = egls.tour_cost(G, new_tour, weight=weight)
-                            new_guided_cost = new_cost + k*egls.tour_cost(G, new_tour, weight='penalty')
+                            new_cost = tour_cost(G, new_tour, weight=weight)
+                            new_guided_cost = new_cost + k*tour_cost(G, new_tour, weight='penalty')
 
                             if new_cost < best_cost:
                                 best_tour, best_cost = new_tour, new_cost

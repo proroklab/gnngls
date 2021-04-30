@@ -1,13 +1,30 @@
-import os
-backend = 'pytorch'
-os.environ['DGLBACKEND'] = backend
-
-import torch
-import dgl
 import egls
+from egls import algorithms
 import networkx as nx
 import numpy as np
 import itertools
+
+
+def get_node_width(G, depot):
+    pos = []
+    n2i = {}
+    for i, n in enumerate(G.nodes):
+        pos.append(G.nodes[n]['pos'])
+        n2i[n] = i
+
+    pos = np.vstack(pos)
+
+    center = pos.mean(axis=0)
+    center_line = center - pos[n2i[depot]]
+
+    u = center_line/np.linalg.norm(center_line)
+    n = np.array([-u[1], u[0]])
+
+    v = pos - pos[n2i[depot]]
+
+    width = np.apply_along_axis(np.dot, 1, v, n)
+
+    return {n: width[n2i[n]] for n in G.nodes}
 
 
 def get_regret(G, optimal_cost):
@@ -58,21 +75,42 @@ def get_depot_weight(G, depot, weight='weight'):
     return depot_weight
 
 
+def get_mst(G, weight='weight'):
+    mst = nx.minimum_spanning_edges(G, weight=weight, algorithm='kruskal', data=False)
+    mst_attr = {e: False for e in G.edges}
+    for e in mst:
+        if e in mst_attr:
+            mst_attr[e] = True
+    assert sum(mst_attr.values()) == len(G.nodes) - 1
+    return mst_attr
+
+
 def set_features(G):
     optimal_cost = 0
     for e in G.edges:
         if G.edges[e]['in_solution']:
             optimal_cost += G.edges[e]['weight']
+
     regret = get_regret(G, optimal_cost)
 
-    greedy_solution = egls.greedy_tour(G, 0)
-    in_greedy_solution = tour_to_edge_attribute(G, greedy_solution)
+    nn_solution = algorithms.nearest_neighbor(G, 0, weight='weight')
+    in_nn_solution = egls.tour_to_edge_attribute(G, nn_solution)
+
+    fi_solution = algorithms.insertion(G, 0, mode='farthest', weight='weight')
+    in_fi_solution = egls.tour_to_edge_attribute(G, fi_solution)
+
+    ni_solution = algorithms.insertion(G, 0, mode='nearest', weight='weight')
+    in_ni_solution = egls.tour_to_edge_attribute(G, ni_solution)
+
+    width = get_node_width(G, 0)
 
     knn = get_nearest_neighbours(G)
 
     min_degree_graph = get_min_degree_graph(G, 2)
 
     depot_weight = get_depot_weight(G, 0)
+
+    mst = get_mst(G)
 
     sp_betweenness = nx.edge_betweenness_centrality(G, weight='weight')
 
@@ -92,14 +130,18 @@ def set_features(G):
 
         G.edges[e]['features'] = np.array([
             G.edges[e]['weight'],
+            np.abs(width[i] - width[j]),
             knn[i][j],
             knn[j][i],
             knn[i][j] == knn[j][i],
             knn[i][j] <= 0.1*len(G.nodes) or knn[j][i] <= 0.1*len(G.nodes),
             knn[i][j] <= 0.2*len(G.nodes) or knn[j][i] <= 0.2*len(G.nodes),
             knn[i][j] <= 0.3*len(G.nodes) or knn[j][i] <= 0.3*len(G.nodes),
-            get_from_edge_dict(in_greedy_solution, e),
+            get_from_edge_dict(in_nn_solution, e),
+            get_from_edge_dict(in_fi_solution, e),
+            get_from_edge_dict(in_ni_solution, e),
             get_from_edge_dict(min_degree_graph, e),
+            get_from_edge_dict(mst, e),
             get_from_edge_dict(sp_betweenness, e),
             get_from_edge_dict(cf_betweenness, e),
         ], dtype=np.float32)
@@ -108,6 +150,7 @@ def set_features(G):
 
     for n in G.nodes:
         G.nodes[n]['features'] = np.array([
+            width[n],
             depot_weight[n],
             sp_closeness[n],
             cf_closeness[n],
@@ -129,13 +172,12 @@ def get_solved_instances(n_nodes, n_instances):
             G.add_edge(i, j, weight=w)
 
         opt_solution = egls.optimal_tour(G, scale=1e6)
-        in_solution = tour_to_edge_attribute(G, opt_solution)
+        in_solution = egls.tour_to_edge_attribute(G, opt_solution)
         nx.set_edge_attributes(G, in_solution, 'in_solution')
 
         yield G
 
 if __name__ == '__main__':
-    import tqdm.auto as tqdm
     import pathlib
     import uuid
     import argparse
