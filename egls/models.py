@@ -5,10 +5,13 @@ os.environ['DGLBACKEND'] = backend
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.utils.data
 import dgl
 import dgl.nn
 import numpy as np
-
+import networkx as nx
+import pickle
+import pathlib
 
 class MLP(nn.Module):
     def __init__(self, embed_dim, hidden_dim, out_dim):
@@ -100,7 +103,58 @@ class EdgePropertyPredictionModel(nn.Module):
         h = self.decision_layer(h)
         return h
 
+class Dataset(torch.utils.data.Dataset):
+    def __init__(self, instances_file, scalers_file=None):
+        if not isinstance(instances_file, pathlib.Path):
+            instances_file = pathlib.Path(instances_file)
 
-class LinkPredictionModel(nn.Module):
-    def __init__():
-        super().__init__()
+        self.instances = [line.strip() for line in open(instances_file)]
+        self.root_dir = instances_file.parent
+        if scalers_file is None:
+            scalers_file = self.root_dir / 'scalers.pkl'
+        self.scalers = pickle.load(open(scalers_file, 'rb'))
+
+    def __len__(self):
+        return len(self.instances)
+
+    def __getitem__(self, i):
+        if torch.is_tensor(i):
+            i = i.tolist()
+
+        G = nx.read_gpickle(self.root_dir / self.instances[i])
+        H = self.nx_to_dgl(G)
+        return H
+
+    def nx_to_dgl(self, G):
+        e2i = {}
+        regret = []
+        efeats = []
+        for i, e in enumerate(G.edges):
+            e2i[e] = i
+            regret.append(G.edges[e]['regret'])
+            efeats.append(G.edges[e]['features'])
+        regret = self.scalers['edges']['regret'].transform(np.vstack(regret)).astype(np.float32)
+        efeats = self.scalers['edges']['features'].transform(np.vstack(efeats))
+
+        n2i = {}
+        nfeats = []
+        for i, n in enumerate(G.nodes):
+            n2i[n] = i
+            nfeats.append(G.nodes[n]['features'])
+        nfeats = self.scalers['nodes']['features'].transform(np.vstack(nfeats))
+
+        lG = nx.line_graph(G)
+        for n in lG.nodes:
+            i, j = n
+            lG.nodes[n]['in_solution'] = np.array([G.edges[n]['in_solution']])
+            lG.nodes[n]['regret'] = regret[e2i[n]]
+            lG.nodes[n]['features'] = np.hstack((
+                nfeats[n2i[i]],
+                efeats[e2i[n]],
+                nfeats[n2i[j]]
+            ))
+            # lG.nodes[n]['e'] = n # store edge id
+
+        attrs = ['features', 'regret', 'in_solution'] # 'e']
+        H = dgl.from_networkx(lG, node_attrs=attrs)
+        return H

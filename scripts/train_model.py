@@ -52,8 +52,8 @@ if __name__ == '__main__':
     tb_dir = pathlib.Path(args.tb_dir)
 
     # Load dataset
-    train_set, _ = dgl.load_graphs(str(data_dir / 'train_graphs.bin'))
-    val_set, _ = dgl.load_graphs(str(data_dir / 'val_graphs.bin'))
+    train_set = models.Dataset(data_dir / 'train.txt')
+    val_set  = models.Dataset(data_dir / 'val.txt')
 
     # use GPU if it is available
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -63,7 +63,8 @@ if __name__ == '__main__':
 
     n_feats, feat_dim = train_set[0].ndata['features'].shape
 
-    model = models.EdgePropertyPredictionModel(feat_dim,
+    model = models.EdgePropertyPredictionModel(
+        feat_dim,
         args.embed_dim,
         1,
         args.n_layers,
@@ -84,11 +85,10 @@ if __name__ == '__main__':
         # assuming all instances are the same size
         y = train_set[0].ndata['in_solution']
         pos_weight = len(y)/y.sum() - 1
-        print('pos_weight =', pos_weight)
         criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
-    train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, collate_fn=dgl.batch)
-    val_loader = DataLoader(val_set, batch_size=args.batch_size, shuffle=True, collate_fn=dgl.batch)
+    train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, collate_fn=dgl.batch, num_workers=os.cpu_count())
+    val_loader = DataLoader(val_set, batch_size=args.batch_size, shuffle=True, collate_fn=dgl.batch, num_workers=os.cpu_count())
 
     log_dir = tb_dir / run_name
     writer = SummaryWriter(log_dir)
@@ -108,10 +108,9 @@ if __name__ == '__main__':
             batch = batch.to(device)
             x = batch.ndata['features']
             y = batch.ndata[args.target]
-            e = batch.edata['is_depot'].view(-1)
 
             optimizer.zero_grad()
-            y_pred = model(batch, x, e)
+            y_pred = model(batch, x)
             loss = criterion(y_pred, y.type_as(y_pred))
             loss.backward()
             optimizer.step()
@@ -129,9 +128,8 @@ if __name__ == '__main__':
                 batch = batch.to(device)
                 x = batch.ndata['features']
                 y = batch.ndata[args.target]
-                e = batch.edata['is_depot'].view(-1)
 
-                y_pred = model(batch, x, e)
+                y_pred = model(batch, x)
                 loss = criterion(y_pred, y.type_as(y_pred))
 
                 epoch_val_loss += loss.item()
