@@ -27,9 +27,8 @@ from sklearn.metrics import accuracy_score
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run an experiment')
-    parser.add_argument('data_dir', type=str, help='Where to load dataset')
-    parser.add_argument('model_dir', type=str, help='Where to save trained model')
-    parser.add_argument('tb_dir', type=str, help='Where to log Tensorboard data')
+    parser.add_argument('data_dir', type=pathlib.Path, help='Where to load dataset')
+    parser.add_argument('tb_dir', type=pathlib.Path, help='Where to log Tensorboard data')
     parser.add_argument('--embed_dim', type=int, default=128, help='Maximum hidden feature dimension')
     parser.add_argument('--n_layers', type=int, default=3, help='Number of message passing steps')
     parser.add_argument('--layer_type', type=str, default='gat', choices=['gcn', 'gated_gcn', 'gat', 'gat_mlp', 'gated_gcn_mlp'], help='GNN layer type')
@@ -39,21 +38,23 @@ if __name__ == '__main__':
     parser.add_argument('--lr_decay', type=float, default=0.99, help='Learning rate decay')
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
     parser.add_argument('--n_epochs', type=int, default=100, help='Number of epochs')
+    parser.add_argument('--checkpoint_freq', type=int, default=None, help='Checkpoint frequency')
     parser.add_argument('--target', type=str, default='regret', choices=['regret', 'in_solution'])
     args = parser.parse_args()
 
     timestamp = datetime.datetime.now().strftime('%b%d_%H-%M-%S')
-    args_list = list(vars(args).values())
-    run_name = '_'.join(map(str, args_list[3:])) + '_' + timestamp
+    params = dict(vars(args))
+    params['data_dir'] = str(params['data_dir'])
+    params['tb_dir'] = str(params['tb_dir'])
+    params['timestamp'] = timestamp
+
+    run_name_parts = list(params.values())
+    run_name = '_'.join(map(str, run_name_parts[2:]))
     print(run_name)
 
-    data_dir = pathlib.Path(args.data_dir)
-    model_dir = pathlib.Path(args.model_dir)
-    tb_dir = pathlib.Path(args.tb_dir)
-
     # Load dataset
-    train_set = models.Dataset(data_dir / 'train.txt')
-    val_set  = models.Dataset(data_dir / 'val.txt')
+    train_set = models.Dataset(args.data_dir / 'train.txt')
+    val_set  = models.Dataset(args.data_dir / 'val.txt')
 
     # use GPU if it is available
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -81,6 +82,7 @@ if __name__ == '__main__':
 
     if args.target == 'regret':
         criterion = torch.nn.MSELoss()
+
     elif args.target == 'in_solution':
         # assuming all instances are the same size
         y = train_set[0].ndata['in_solution']
@@ -90,14 +92,14 @@ if __name__ == '__main__':
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, collate_fn=dgl.batch, num_workers=os.cpu_count())
     val_loader = DataLoader(val_set, batch_size=args.batch_size, shuffle=True, collate_fn=dgl.batch, num_workers=os.cpu_count())
 
-    log_dir = tb_dir / run_name
+    log_dir = args.tb_dir / run_name
     writer = SummaryWriter(log_dir)
 
     # early stopping
     best_score = None
     min_delta = 1e-3
     counter = 0
-    patience = 20
+    patience = 15
 
     pbar = tqdm.trange(args.n_epochs)
     for epoch in pbar:
@@ -142,6 +144,16 @@ if __name__ == '__main__':
             'Validation Loss': '{:.4f}'.format(epoch_val_loss),
         })
 
+        if args.checkpoint_freq is not None and epoch > 0 and epoch % args.checkpoint_freq == 0:
+            checkpoint_name = f'checkpoint_{epoch}.pt'
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'loss': epoch_loss,
+                'val_loss': epoch_val_loss
+            }, args.tb_dir / run_name / checkpoint_name)
+
         if best_score is None:
             best_score = epoch_val_loss
         elif epoch_val_loss < best_score - min_delta:
@@ -158,10 +170,11 @@ if __name__ == '__main__':
 
     writer.close()
 
-    summary = {
-        'loss': float(epoch_loss),
-        'val_loss': float(epoch_val_loss)
-    }
-    summary.update(vars(args)) # add all commandline arguments
-    json.dump(summary, open(model_dir / f'summary_{run_name}.json', 'w'))
-    torch.save(model.state_dict(), model_dir / f'model_{run_name}.bin')
+    json.dump(params, open(args.tb_dir / run_name / 'params.json', 'w'))
+    torch.save({
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': epoch_loss,
+        'val_loss': epoch_val_loss
+    }, args.tb_dir / run_name / 'checkpoint_final.pt')

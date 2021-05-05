@@ -5,6 +5,7 @@ if __name__ == '__main__':
     import networkx as nx
     import tqdm.auto as tqdm
     import pickle
+    import random
 
     from sklearn.preprocessing import MinMaxScaler
     from sklearn.model_selection import train_test_split
@@ -18,14 +19,21 @@ if __name__ == '__main__':
 
     # train test split
     instances = list(args.dir.glob('*.pkl'))
+    random.shuffle(instances)
 
-    train_set, test_set = train_test_split(instances, train_size=0.854, shuffle=True)
-    train_set, val_set = train_test_split(train_set, train_size=0.854, shuffle=True)
+    n_train = 100000
+    n_test = 1000
+    n_val = 10000
 
-    for data_set, file in zip([train_set, val_set, test_set], ['train.txt', 'val.txt', 'test.txt']):
-        with open(args.dir / file, 'w') as data_file:
+    train_set = instances[:n_train]
+    test_set = instances[n_train:n_train + n_test]
+    val_set = instances[n_train + n_test:n_train + n_test + n_val]
+
+    for data_set, file_name in zip([train_set, val_set, test_set], ['train.txt', 'val.txt', 'test.txt']):
+        with open(args.dir / file_name, 'w') as data_file:
             for path in data_set:
                 data_file.write(str(path.relative_to(args.dir)) + '\n')
+            print(f'{file_name} contains {len(data_set)} instances.')
 
     scalers = {
         'nodes': {
