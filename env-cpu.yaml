@@ -5,11 +5,11 @@ channels:
 dependencies:
   - python=3.8
   - numpy
+  - cpuonly
   - torchvision
-  - torchaudio
-  - cudatoolkit=10.2
   - pytorch
-  - dgl-cuda10.2
+  - torchaudio
+  - dgl
   - tensorboard
   - tqdm
   - scikit-learn

@@ -36,6 +36,8 @@ if __name__ == '__main__':
     # parser.add_argument('--activation', type=str, default='relu', choices=['elu', 'relu', 'leaky_relu'], help='Activation function')
     parser.add_argument('--lr_init', type=float, default=1e-3, help='Initial learning rate')
     parser.add_argument('--lr_decay', type=float, default=0.99, help='Learning rate decay')
+    parser.add_argument('--min_delta', type=float, default=1e-4, help='Early stopping min delta')
+    parser.add_argument('--patience', type=int, default=10, help='Early stopping patience')
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
     parser.add_argument('--n_epochs', type=int, default=100, help='Number of epochs')
     parser.add_argument('--checkpoint_freq', type=int, default=None, help='Checkpoint frequency')
@@ -97,9 +99,7 @@ if __name__ == '__main__':
 
     # early stopping
     best_score = None
-    min_delta = 1e-3
     counter = 0
-    patience = 15
 
     pbar = tqdm.trange(args.n_epochs)
     for epoch in pbar:
@@ -154,15 +154,13 @@ if __name__ == '__main__':
                 'val_loss': epoch_val_loss
             }, args.tb_dir / run_name / checkpoint_name)
 
-        if best_score is None:
-            best_score = epoch_val_loss
-        elif epoch_val_loss < best_score - min_delta:
+        if best_score is None or epoch_val_loss < best_score - args.min_delta:
             best_score = epoch_val_loss
             counter = 0
         else:
             counter += 1
 
-        if counter >= patience:
+        if counter >= args.patience:
             pbar.close()
             break
 
