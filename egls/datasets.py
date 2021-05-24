@@ -9,6 +9,7 @@ import numpy as np
 import networkx as nx
 import pickle
 import pathlib
+import copy
 
 from operator import itemgetter
 
@@ -175,7 +176,7 @@ def get_mst(G, weight='weight'):
 
 
 class TSPDataset(torch.utils.data.Dataset):
-    def __init__(self, instances_file, scalers_file=None):
+    def __init__(self, instances_file, scalers_file=None, nfeat_drop_idx=[], efeat_drop_idx=[]):
         if not isinstance(instances_file, pathlib.Path):
             instances_file = pathlib.Path(instances_file)
 
@@ -184,6 +185,15 @@ class TSPDataset(torch.utils.data.Dataset):
         if scalers_file is None:
             scalers_file = self.root_dir / 'scalers.pkl'
         self.scalers = pickle.load(open(scalers_file, 'rb'))
+        self.nfeat_drop_idx = nfeat_drop_idx
+        self.efeat_drop_idx = efeat_drop_idx
+
+        # cache the graph so we only need to create it once
+        G = nx.read_gpickle(self.root_dir / self.instances[0])
+        lG = nx.line_graph(G)
+        for n in lG.nodes:
+            lG.nodes[n]['e'] = n
+        self.G = dgl.from_networkx(lG, node_attrs=['e'])
 
     def __len__(self):
         return len(self.instances)
@@ -193,10 +203,10 @@ class TSPDataset(torch.utils.data.Dataset):
             i = i.tolist()
 
         G = nx.read_gpickle(self.root_dir / self.instances[i])
-        H = self.nx_to_dgl(G)
+        H = self.get_scaled_features(G)
         return H
 
-    def nx_to_dgl(self, G, index_edges=False):
+    def get_scaled_features(self, G):
         e2i = {}
         regret = []
         efeats = []
@@ -204,8 +214,9 @@ class TSPDataset(torch.utils.data.Dataset):
             e2i[e] = i
             regret.append(G.edges[e]['regret'])
             efeats.append(G.edges[e]['features'])
-        regret = self.scalers['edges']['regret'].transform(np.vstack(regret)).astype(np.float32)
+        regret = self.scalers['edges']['regret'].transform(np.vstack(regret))
         efeats = self.scalers['edges']['features'].transform(np.vstack(efeats))
+        efeats = np.delete(efeats, self.efeat_drop_idx, axis=1)
 
         n2i = {}
         nfeats = []
@@ -213,23 +224,24 @@ class TSPDataset(torch.utils.data.Dataset):
             n2i[n] = i
             nfeats.append(G.nodes[n]['features'])
         nfeats = self.scalers['nodes']['features'].transform(np.vstack(nfeats))
+        nfeats = np.delete(nfeats, self.nfeat_drop_idx, axis=1)
 
-        lG = nx.line_graph(G)
-        for n in lG.nodes:
-            i, j = n
-            lG.nodes[n]['in_solution'] = np.array([G.edges[n]['in_solution']])
-            lG.nodes[n]['regret'] = regret[e2i[n]]
-            lG.nodes[n]['features'] = np.hstack((
+        x = []
+        y = []
+        for e_i in range(self.G.number_of_nodes()):
+            e = tuple(self.G.ndata['e'][e_i].numpy()) # corresponding edge
+            i, j = e # nodes from edge
+
+            x.append(np.hstack((
                 nfeats[n2i[i]],
-                efeats[e2i[n]],
+                efeats[e2i[e]],
                 nfeats[n2i[j]]
-            ))
-            if index_edges:
-                lG.nodes[n]['e'] = n
+            )))
+            y.append(regret[e2i[e]])
 
-        attrs = ['features', 'regret', 'in_solution']
-        if index_edges:
-            attrs.append('e')
-        H = dgl.from_networkx(lG, node_attrs=attrs)
+        H = copy.deepcopy(self.G)
+        H.ndata['features'] = torch.tensor(x, dtype=torch.float32)
+        H.ndata['regret'] = torch.tensor(y, dtype=torch.float32)
         return H
+        #return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32)
 

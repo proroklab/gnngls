@@ -1,5 +1,6 @@
 import numpy as np
 import networkx as nx
+import time
 
 from . import tour_cost, operators
 
@@ -14,7 +15,7 @@ def nearest_neighbor(G, depot, weight='weight'):
     tour.append(depot)
     return tour
 
-def beam_search(G, depot, prob='prob'):
+def probabilistic_nearest_neighbour(G, depot, prob='prob'):
     tour = [depot]
 
     while len(tour) < len(G.nodes):
@@ -41,12 +42,12 @@ def beam_search(G, depot, prob='prob'):
     tour.append(depot)
     return tour
 
-def cheapest_beam_search(G, depot, n_iters, prob='prob', weight='weight'):
+def best_probabilistic_nearest_neighbour(G, depot, n_iters, prob='prob', weight='weight'):
     best_tour = None
     best_cost = 0
 
     for _ in range(n_iters):
-        new_tour = beam_search(G, depot, prob)
+        new_tour = probabilistic_nearest_neighbour(G, depot, prob)
         new_cost = tour_cost(G, new_tour, weight)
 
         if new_cost < best_cost or best_tour is None:
@@ -99,6 +100,7 @@ def insertion(G, depot, mode='farthest', weight='weight'):
 def local_search(G, init_tour, init_cost, weight='weight'):
     cur_tour, cur_cost = init_tour, init_cost
     best_tour, best_cost = init_tour, init_cost
+    best_cost_progress = []
 
     improved = True
     while improved:
@@ -110,22 +112,27 @@ def local_search(G, init_tour, init_cost, weight='weight'):
                 new_cost = tour_cost(G, new_tour, weight=weight)
 
                 if new_cost < best_cost:
+                    best_cost_progress.append((time.time(), new_cost))
                     best_tour, best_cost = new_tour, new_cost
 
                 if new_cost < cur_cost:
                     improved = True
                     cur_tour, cur_cost = new_tour, new_cost
 
-    return best_tour, best_cost
+    return best_tour, best_cost, best_cost_progress
 
-def guided_local_search(G, init_tour, init_cost, n_iters, weight='weight', guides=['weight'], perturbation_moves=30):
+def guided_local_search(G, init_tour, init_cost, t_lim, weight='weight', guides=['weight'], perturbation_moves=30):
     k = 0.1*init_cost/len(G.nodes)
     nx.set_edge_attributes(G, 0, 'penalty')
 
-    cur_tour, cur_cost = local_search(G, init_tour, init_cost, weight)
+    best_cost_progress = []
+
+    cur_tour, cur_cost, best_cost_progress_ls = local_search(G, init_tour, init_cost, weight)
+    best_cost_progress += best_cost_progress_ls
     best_tour, best_cost = cur_tour, cur_cost
 
-    for iter_i in range(n_iters):
+    iter_i = 0
+    while time.time() < t_lim:
         guide = guides[iter_i % len(guides)] # option change guide ever iteration (as in KGLS)
 
         # perturbation
@@ -157,6 +164,7 @@ def guided_local_search(G, init_tour, init_cost, n_iters, weight='weight', guide
                             new_guided_cost = new_cost + k*tour_cost(G, new_tour, weight='penalty')
 
                             if new_cost < best_cost:
+                                best_cost_progress.append((time.time(), new_cost))
                                 best_tour, best_cost = new_tour, new_cost
 
                             if new_guided_cost < cur_guided_cost:
@@ -166,8 +174,11 @@ def guided_local_search(G, init_tour, init_cost, n_iters, weight='weight', guide
                         moves += moved
 
         # optimisation
-        cur_tour, cur_cost = local_search(G, cur_tour, cur_cost, weight)
+        cur_tour, cur_cost, best_cost_progress_ls = local_search(G, cur_tour, cur_cost, weight)
+        best_cost_progress += best_cost_progress_ls
         if cur_cost < best_cost:
             best_tour, best_cost = cur_tour, cur_cost
 
-    return best_tour, best_cost
+        iter_i += 1
+
+    return best_tour, best_cost, best_cost_progress
