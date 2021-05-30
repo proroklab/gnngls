@@ -97,38 +97,33 @@ def insertion(G, depot, mode='farthest', weight='weight'):
 
     return tour
 
-def local_search(G, init_tour, init_cost, weight='weight'):
+def local_search(init_tour, init_cost, D, first_improvement=False):
     cur_tour, cur_cost = init_tour, init_cost
-    best_tour, best_cost = init_tour, init_cost
-    best_cost_progress = []
+    progress = []
 
     improved = True
     while improved:
-        improved = False
 
+        improved = False
         for operator in [operators.two_opt_a2a, operators.relocate_a2a]:
 
-            for new_tour in operator(cur_tour):
-                new_cost = tour_cost(G, new_tour, weight=weight)
+            delta, new_tour = operator(cur_tour, D, first_improvement)
+            if delta < 0:
+                improved = True
+                cur_cost += delta
+                cur_tour = new_tour
 
-                if new_cost < best_cost:
-                    best_cost_progress.append((time.time(), new_cost))
-                    best_tour, best_cost = new_tour, new_cost
+                progress.append((time.time(), cur_cost))
 
-                if new_cost < cur_cost:
-                    improved = True
-                    cur_tour, cur_cost = new_tour, new_cost
+    return cur_tour, cur_cost, progress
 
-    return best_tour, best_cost, best_cost_progress
-
-def guided_local_search(G, init_tour, init_cost, t_lim, weight='weight', guides=['weight'], perturbation_moves=30):
+def guided_local_search(G, init_tour, init_cost, t_lim, weight='weight', guides=['weight'], perturbation_moves=30, first_improvement=False):
     k = 0.1*init_cost/len(G.nodes)
     nx.set_edge_attributes(G, 0, 'penalty')
 
-    best_cost_progress = []
+    edge_weight, _ = nx.attr_matrix(G, weight)
 
-    cur_tour, cur_cost, best_cost_progress_ls = local_search(G, init_tour, init_cost, weight)
-    best_cost_progress += best_cost_progress_ls
+    cur_tour, cur_cost, progress = local_search(init_tour, init_cost, edge_weight, first_improvement)
     best_tour, best_cost = cur_tour, cur_cost
 
     iter_i = 0
@@ -149,7 +144,9 @@ def guided_local_search(G, init_tour, init_cost, t_lim, weight='weight', guides=
 
             G.edges[max_util_e]['penalty'] += 1.
 
-            cur_guided_cost = cur_cost + k*tour_cost(G, cur_tour, weight='penalty')
+            # cur_guided_cost = cur_cost + k*tour_cost(G, cur_tour, weight='penalty')
+            edge_penalties, _ = nx.attr_matrix(G, 'penalty')
+            edge_weight_guided = edge_weight + k*edge_penalties
 
             # apply operator to edge
             for n in max_util_e:
@@ -159,26 +156,35 @@ def guided_local_search(G, init_tour, init_cost, t_lim, weight='weight', guides=
                     for operator in [operators.two_opt_o2a, operators.relocate_o2a]:
                         moved = False
 
-                        for new_tour in operator(cur_tour, i):
-                            new_cost = tour_cost(G, new_tour, weight=weight)
-                            new_guided_cost = new_cost + k*tour_cost(G, new_tour, weight='penalty')
+                        delta, new_tour = operator(cur_tour, edge_weight_guided, i, first_improvement)
+                        if delta < 0:
+                            # cur_cost += delta
+                            cur_tour = new_tour
+                            moved = True
 
-                            if new_cost < best_cost:
-                                best_cost_progress.append((time.time(), new_cost))
-                                best_tour, best_cost = new_tour, new_cost
+                            # best_cost_progress.append((time.time(), best_cost))
 
-                            if new_guided_cost < cur_guided_cost:
-                                cur_tour, cur_cost, cur_guided_cost = new_tour, new_cost, new_guided_cost
-                                moved = True
+                        # for new_tour in operator(cur_tour, i):
+                        #     new_cost = tour_cost(G, new_tour, weight=weight)
+                        #     new_guided_cost = new_cost + k*tour_cost(G, new_tour, weight='penalty')
+
+                        #     if new_cost < best_cost:
+                        #         best_cost_progress.append((time.time(), new_cost))
+                        #         best_tour, best_cost = new_tour, new_cost
+
+                        #     if new_guided_cost < cur_guided_cost:
+                        #         cur_tour, cur_cost, cur_guided_cost = new_tour, new_cost, new_guided_cost
+                        #         moved = True
 
                         moves += moved
 
         # optimisation
-        cur_tour, cur_cost, best_cost_progress_ls = local_search(G, cur_tour, cur_cost, weight)
-        best_cost_progress += best_cost_progress_ls
+        cur_cost = tour_cost(G, cur_tour, weight)
+        cur_tour, cur_cost, progress_ls = local_search(cur_tour, cur_cost, edge_weight, first_improvement)
+        progress += progress_ls
         if cur_cost < best_cost:
             best_tour, best_cost = cur_tour, cur_cost
 
         iter_i += 1
 
-    return best_tour, best_cost, best_cost_progress
+    return best_tour, best_cost, progress
