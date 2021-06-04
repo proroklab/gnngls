@@ -1,4 +1,4 @@
-egls/
-scripts/
+egls/*
+scripts/*
 setup.py
 env.yml
