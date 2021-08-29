@@ -113,7 +113,7 @@ def local_search(init_tour, init_cost, D, first_improvement=False):
                 cur_cost += delta
                 cur_tour = new_tour
 
-                progress.append((time.time(), cur_cost))
+                progress.append((time.time(), cur_cost, cur_tour))
 
     return cur_tour, cur_cost, progress
 
@@ -180,8 +180,8 @@ def guided_local_search(G, init_tour, init_cost, t_lim, weight='weight', guides=
 
         # optimisation
         cur_cost = tour_cost(G, cur_tour, weight)
-        cur_tour, cur_cost, progress_ls = local_search(cur_tour, cur_cost, edge_weight, first_improvement)
-        progress += progress_ls
+        cur_tour, cur_cost, progress_i = local_search(cur_tour, cur_cost, edge_weight, first_improvement)
+        progress += progress_i
         if cur_cost < best_cost:
             best_tour, best_cost = cur_tour, cur_cost
 

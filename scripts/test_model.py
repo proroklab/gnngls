@@ -21,6 +21,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_path', type=pathlib.Path, default=None)
     parser.add_argument('guides', type=str, nargs='+')
     parser.add_argument('--time_limit', type=float, default=10.)
+    parser.add_argument('--perturbation_moves', type=int, default=30)
     args = parser.parse_args()
     guides = args.guides
 
@@ -91,7 +92,7 @@ if __name__ == '__main__':
                 G.edges[e]['width'] = np.abs(width[i] - width[j])
                 G.edges[e]['width_and_weight'] = G.edges[e]['width'] + G.edges[e]['weight']
 
-        best_tour, best_cost, best_cost_progress = algorithms.guided_local_search(G, init_tour, init_cost, t + args.time_limit, weight='weight', guides=args.guides, first_improvement=False)
+        best_tour, best_cost, best_cost_progress = algorithms.guided_local_search(G, init_tour, init_cost, t + args.time_limit, weight='weight', guides=args.guides, perturbation_moves=args.perturbation_moves, first_improvement=False)
         gap = (best_cost/opt_cost - 1)*100
         gaps.append(gap)
         for p in best_cost_progress:
@@ -101,6 +102,7 @@ if __name__ == '__main__':
         pbar.set_postfix({
             'Avg Gap': '{:.4f}'.format(np.mean(gaps)),
         })
+
 
     pbar.close()
 

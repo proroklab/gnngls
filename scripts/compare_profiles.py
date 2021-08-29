@@ -59,9 +59,9 @@ if __name__ == '__main__':
         ax1.set_ylim([1e-7, 1e1])
         ax1.set_xlabel('Computation time (s)')
         ax1.set_ylabel('Gap to optimal solution (%)')
-        ax1.legend(loc='upper right')
+        ax1.legend(loc='best')
         fig1.tight_layout()
-        fig1.savefig(args.expt_name + '_gap.png')
+        fig1.savefig(args.expt_name + '_gap.pdf', bbox_inches='tight')
 
         ax2.plot(ts, opt_solved, label=log_label)
         ax2.set_xlim([0, time_limit])
@@ -70,7 +70,7 @@ if __name__ == '__main__':
         ax2.set_xlabel('Computation time (s)')
         ax2.legend()
         fig2.tight_layout()
-        fig2.savefig(args.expt_name + '_opt.png')
+        fig2.savefig(args.expt_name + '_opt.pdf', bbox_inches='tight')
 
     plt.tight_layout()
     plt.show()

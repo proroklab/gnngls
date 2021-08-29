@@ -3,6 +3,8 @@
 *.txt
 *.ipynb
 *.png
+*.tex
+*.pdf
 *.sublime-project
 *.sublime-workspace
 **/.ipynb_checkpoints
