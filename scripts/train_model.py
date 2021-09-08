@@ -18,6 +18,7 @@ import tqdm.auto as tqdm
 import pathlib
 import argparse
 import datetime
+import uuid
 import json
 
 from torch.utils.tensorboard import SummaryWriter
@@ -134,7 +135,8 @@ if __name__ == '__main__':
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, collate_fn=dgl.batch, num_workers=os.cpu_count())
     val_loader = DataLoader(val_set, batch_size=args.batch_size, shuffle=True, collate_fn=dgl.batch, num_workers=os.cpu_count())
 
-    run_name = datetime.datetime.now().strftime('%b%d_%H-%M-%S')
+    timestamp = datetime.datetime.now().strftime('%b%d_%H-%M-%S')
+    run_name = f'{timestamp}_{uuid.uuid4().hex}'
     log_dir = args.tb_dir / run_name
     writer = SummaryWriter(log_dir)
 
@@ -144,7 +146,6 @@ if __name__ == '__main__':
 
     pbar = tqdm.trange(args.n_epochs)
     for epoch in pbar:
-        #print(torch.cuda.memory_stats(device))
         epoch_loss = train(model, train_loader, args.target, criterion, optimizer, device)
         writer.add_scalar("Loss/train", epoch_loss, epoch)
 

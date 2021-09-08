@@ -18,8 +18,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('data_path', type=pathlib.Path)
     parser.add_argument('profile_path', type=pathlib.Path)
-    parser.add_argument('--model_path', type=pathlib.Path, default=None)
     parser.add_argument('guides', type=str, nargs='+')
+    parser.add_argument('--model_path', type=pathlib.Path, default=None)
     parser.add_argument('--time_limit', type=float, default=10.)
     parser.add_argument('--perturbation_moves', type=int, default=30)
     args = parser.parse_args()
@@ -57,22 +57,18 @@ if __name__ == '__main__':
 
         opt_cost = egls.optimal_cost(G, weight='weight')
 
-        # put this outside timing because it is part of the features, so it is recomputed
+        progress.append((instance, t, np.nan, np.nan, opt_cost))
+
         init_tour = algorithms.insertion(G, 0, mode='farthest', weight='weight')
         init_cost = egls.tour_cost(G, init_tour)
 
-        t = time.time()
-        progress.append((instance, t, 0, opt_cost))
-
         if 'regret_pred' in guides:
-            check_features(G)
             H = ds.get_scaled_features(G)
 
             x = H.ndata['features']
             y = H.ndata['regret']
             with torch.no_grad():
                  y_pred = model(H, x)
-                 #print(criterion(y, y_pred))
 
             regret_pred = ds.scalers['edges']['regret'].inverse_transform(y_pred.numpy())
 
@@ -114,5 +110,5 @@ if __name__ == '__main__':
 
     profile_name_parts = list(params.values())
     profile_path = args.profile_path / ('test_' + '_'.join(map(str, profile_name_parts[3:])) + '.pkl')
-    profile = pd.DataFrame(progress, columns=['instance', 'time', 'cost', 'opt_cost'])
+    profile = pd.DataFrame(progress, columns=['instance', 'time', 'cost', 'tour', 'opt_cost'])
     profile.to_pickle(profile_path)
