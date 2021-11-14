@@ -15,13 +15,13 @@ def nearest_neighbor(G, depot, weight='weight'):
     tour.append(depot)
     return tour
 
-def probabilistic_nearest_neighbour(G, depot, prob='prob'):
+def probabilistic_nearest_neighbour(G, depot, guide='weight', invert=True):
     tour = [depot]
 
     while len(tour) < len(G.nodes):
         i = tour[-1]
 
-        neighbours = [(j, G.edges[(i, j)][prob]) for j in G.neighbors(i) if j not in tour]
+        neighbours = [(j, G.edges[(i, j)][guide]) for j in G.neighbors(i) if j not in tour]
 
         nodes, p = zip(*neighbours)
 
@@ -36,18 +36,22 @@ def probabilistic_nearest_neighbour(G, depot, prob='prob'):
         if np.sum(p) == 0:
             p[:] = 1.
 
+        # if the guide should be inverted, for example, edge weight
+        if invert:
+            p = 1/p
+
         j = np.random.choice(nodes, p=p/np.sum(p))
         tour.append(j)
 
     tour.append(depot)
     return tour
 
-def best_probabilistic_nearest_neighbour(G, depot, n_iters, prob='prob', weight='weight'):
+def best_probabilistic_nearest_neighbour(G, depot, n_iters, guide='weight', weight='weight'):
     best_tour = None
     best_cost = 0
 
     for _ in range(n_iters):
-        new_tour = probabilistic_nearest_neighbour(G, depot, prob)
+        new_tour = probabilistic_nearest_neighbour(G, depot, guide)
         new_cost = tour_cost(G, new_tour, weight)
 
         if new_cost < best_cost or best_tour is None:
@@ -113,7 +117,7 @@ def local_search(init_tour, init_cost, D, first_improvement=False):
                 cur_cost += delta
                 cur_tour = new_tour
 
-                progress.append((time.time(), cur_cost, cur_tour))
+                progress.append(('optimization', time.time(), cur_cost, cur_tour, None))
 
     return cur_tour, cur_cost, progress
 
@@ -162,7 +166,8 @@ def guided_local_search(G, init_tour, init_cost, t_lim, weight='weight', guides=
                             cur_tour = new_tour
                             moved = True
 
-                            # best_cost_progress.append((time.time(), best_cost))
+                            penalties = nx.get_edge_attributes(G, 'penalty')
+                            progress.append(('perturbation', time.time(), tour_cost(G, cur_tour), cur_tour, penalties))
 
                         # for new_tour in operator(cur_tour, i):
                         #     new_cost = tour_cost(G, new_tour, weight=weight)

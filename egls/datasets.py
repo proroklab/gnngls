@@ -106,9 +106,9 @@ def get_regret(G, optimal_cost):
         if G.edges[e]['in_solution']:
             regret[e] = 0.
         else:
-            fixed_edge_tour = fixed_edge_tour(G, e, scale=1e6, max_trials=100, runs=10)
-            fixed_edge_cost = tour_cost(G, fixed_edge_tour)
-            regret[e] = (fixed_edge_cost - optimal_cost)/optimal_cost
+            tour = fixed_edge_tour(G, e, scale=1e6, max_trials=100, runs=10)
+            cost = tour_cost(G, tour)
+            regret[e] = (cost - optimal_cost)/optimal_cost
 
     return regret
 
@@ -174,6 +174,36 @@ def get_mst(G, weight='weight'):
     assert sum(mst.values()) == len(G.nodes) - 1
     return mst
 
+class TSPLIBDataset(torch.utils.data.Dataset):
+    def __init__(self, instances_file, is_scaled=True):
+        super().__init__()
+
+        if is_scaled:
+            pass
+        else:
+            raise Exception('NYI')
+
+        if not isinstance(instances_file, pathlib.Path):
+            instances_file = pathlib.Path(instances_file)
+
+        self.instances = [line.strip() for line in open(instances_file)]
+        self.root_dir = instances_file.parent
+
+    def __len__(self):
+        return len(self.instances)
+
+    def __getitem__(self, i):
+        if torch.is_tensor(i):
+            i = i.tolist()
+
+        G = nx.read_gpickle(self.root_dir / self.instances[i])
+        lG = nx.line_graph(G)
+        for n in lG.nodes:
+            lG.nodes[n]['e'] = n
+            lG.nodes[n]['weight'] = G.edges[n]['weight']
+        H = dgl.from_networkx(lG, node_attrs=['e', 'weight'])
+        H.ndata['weight'] /= np.sqrt(2) # scale lol
+        return H
 
 class TSPDataset(torch.utils.data.Dataset):
     def __init__(self, instances_file, scalers_file=None, nfeat_drop_idx=[], efeat_drop_idx=[]):
@@ -204,6 +234,19 @@ class TSPDataset(torch.utils.data.Dataset):
 
         G = nx.read_gpickle(self.root_dir / self.instances[i])
         H = self.get_scaled_features(G)
+        return H
+
+    def get_scaled_edge_weight(self, G):
+        x = []
+        for e_i in range(self.G.number_of_nodes()):
+            e = tuple(self.G.ndata['e'][e_i].numpy()) # corresponding edge
+            i, j = e # nodes from edge
+
+            w = G.edges[e]['weight']
+            x.append([w])
+
+        H = copy.deepcopy(self.G)
+        H.ndata['features'] = torch.tensor(x, dtype=torch.float32) / np.sqrt(2)
         return H
 
     def get_scaled_features(self, G):
@@ -243,5 +286,4 @@ class TSPDataset(torch.utils.data.Dataset):
         H.ndata['features'] = torch.tensor(x, dtype=torch.float32)
         H.ndata['regret'] = torch.tensor(y, dtype=torch.float32)
         return H
-        #return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32)
 
