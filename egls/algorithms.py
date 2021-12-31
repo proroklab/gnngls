@@ -117,7 +117,7 @@ def local_search(init_tour, init_cost, D, first_improvement=False):
                 cur_cost += delta
                 cur_tour = new_tour
 
-                progress.append(('optimization', time.time(), cur_cost, cur_tour, None))
+                progress.append((time.time(), cur_cost))
 
     return cur_tour, cur_cost, progress
 
@@ -167,7 +167,7 @@ def guided_local_search(G, init_tour, init_cost, t_lim, weight='weight', guides=
                             moved = True
 
                             penalties = nx.get_edge_attributes(G, 'penalty')
-                            progress.append(('perturbation', time.time(), tour_cost(G, cur_tour), cur_tour, penalties))
+                            progress.append((time.time(), tour_cost(G, cur_tour)))
 
                         # for new_tour in operator(cur_tour, i):
                         #     new_cost = tour_cost(G, new_tour, weight=weight)
