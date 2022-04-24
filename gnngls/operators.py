@@ -146,25 +146,3 @@ def relocate_a2a(tour, D, first_improvement=False):
         return best_delta, relocate(tour, *best_move)
     return 0, tour
 
-# def exchange(tour, i, j):
-#     new_tour = tour.copy()
-#     n, m = new_tour[i], new_tour[j]
-#     new_tour[j], new_tour[i] = n, m
-#     return new_tour
-
-# def exchange_o2a(tour, i):
-#     assert i > 0 and  i < len(tour) - 1
-
-#     idxs = range(1, len(tour) - 1)
-#     for j in idxs:
-#         if i == j:
-#             continue
-
-#         new_tour = exchange(tour, i, j)
-#         yield new_tour
-
-# def exchange_a2a(tour):
-#     idxs = range(1, len(tour) - 1)
-#     for i, j in itertools.combinations(idxs, 2):
-#         new_tour = exchange(tour, i, j)
-#         yield new_tour

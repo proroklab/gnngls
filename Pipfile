@@ -26,6 +26,7 @@ pyconcorde = {git = "https://github.com/jvkersch/pyconcorde"}
 lkh = {git = "https://github.com/ben-hudson/pylkh"}
 
 [dev-packages]
+gnngls = {editable = true, path = "."}
 
 [requires]
 python_version = "3.8"
