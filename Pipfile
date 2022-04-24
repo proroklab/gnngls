@@ -1,0 +1,31 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[[source]]
+url = "https://download.pytorch.org/whl/cu111"
+verify_ssl = true
+name = "pytorch"
+
+[[source]]
+url = "https://data.dgl.ai/wheels/repo.html"
+verify_ssl = true
+name = "dgl"
+
+[packages]
+jupyter = "*"
+pandas = "*"
+torch = {version = "*", index = "pytorch"}
+torchvision = {version = "*", index = "pytorch"}
+torchaudio = {version = "*", index = "pytorch"}
+dgl-cu111 = {version = "*", index = "dgl"}
+dglgo = {version = "*", index = "dgl"}
+setuptools = "*"
+pyconcorde = {git = "https://github.com/jvkersch/pyconcorde"}
+lkh = {git = "https://github.com/ben-hudson/pylkh"}
+
+[dev-packages]
+
+[requires]
+python_version = "3.8"
