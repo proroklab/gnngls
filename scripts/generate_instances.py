@@ -1,9 +1,9 @@
-import egls
+import gnngls
 import networkx as nx
 import numpy as np
 import itertools
 
-from egls import datasets
+from gnngls import datasets
 
 def prepare_instance(G):
     datasets.set_features(G)
@@ -22,8 +22,8 @@ def get_solved_instances(n_nodes, n_instances):
             w = np.linalg.norm(G.nodes[j]['pos'] - G.nodes[i]['pos'])
             G.add_edge(i, j, weight=w)
 
-        opt_solution = egls.optimal_tour(G, scale=1e6)
-        in_solution = egls.tour_to_edge_attribute(G, opt_solution)
+        opt_solution = gnngls.optimal_tour(G, scale=1e6)
+        in_solution = gnngls.tour_to_edge_attribute(G, opt_solution)
         nx.set_edge_attributes(G, in_solution, 'in_solution')
 
         yield G

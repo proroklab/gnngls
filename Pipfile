@@ -24,6 +24,8 @@ dglgo = {version = "*", index = "dgl"}
 setuptools = "*"
 pyconcorde = {git = "https://github.com/jvkersch/pyconcorde"}
 lkh = {git = "https://github.com/ben-hudson/pylkh"}
+tqdm = "*"
+scikit-learn = "*"
 
 [dev-packages]
 gnngls = {editable = true, path = "."}

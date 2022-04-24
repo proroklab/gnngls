@@ -14,14 +14,11 @@ import copy
 
 from operator import itemgetter
 
-from . import algorithms, tour_cost, tour_to_edge_attribute, fixed_edge_tour, optimal_cost as get_optimal_cost
+from . import algorithms, tour_cost, fixed_edge_tour, optimal_cost as get_optimal_cost
 
 
-def _get_from_edge_dict(d, k):
-    return d[k] if k in d else d[tuple(reversed(k))]
 
-
-def set_features(G, depot):
+def set_features(G):
     for e in G.edges:
         i, j = e
 
@@ -29,74 +26,37 @@ def set_features(G, depot):
             G.edges[e]['weight'],
         ], dtype=np.float32)
 
-def set_labels(G, depot):
+def set_labels(G):
     optimal_cost = get_optimal_cost(G)
-    regret = get_regret(G, optimal_cost)
 
     for e in G.edges:
-        G.edges[e]['regret'] = regret[e].astype(float32)
-
-
-def get_regret(G, optimal_cost):
-    regret = {}
-
-    for e in G.edges:
-        if G.edges[e]['in_solution']:
-            regret[e] = 0.
-        else:
+        regret = 0.
+        
+        if not G.edges[e]['in_solution']:
             tour = fixed_edge_tour(G, e, scale=1e6, max_trials=100, runs=10)
             cost = tour_cost(G, tour)
-            regret[e] = (cost - optimal_cost) / optimal_cost
+            regret = (cost - optimal_cost) / optimal_cost
+        
+        G.edges[e]['regret'] = regret
 
-    return regret
-
-
-class TSPLIBDataset(torch.utils.data.Dataset):
-    def __init__(self, instances_file, is_scaled=True):
-        super().__init__()
-
-        if is_scaled:
-            pass
-        else:
-            raise Exception('NYI')
-
-        if not isinstance(instances_file, pathlib.Path):
-            instances_file = pathlib.Path(instances_file)
-
-        self.instances = [line.strip() for line in open(instances_file)]
-        self.root_dir = instances_file.parent
-
-    def __len__(self):
-        return len(self.instances)
-
-    def __getitem__(self, i):
-        if torch.is_tensor(i):
-            i = i.tolist()
-
-        G = nx.read_gpickle(self.root_dir / self.instances[i])
-        lG = nx.line_graph(G)
-        for n in lG.nodes:
-            lG.nodes[n]['e'] = n
-            lG.nodes[n]['weight'] = G.edges[n]['weight']
-        H = dgl.from_networkx(lG, node_attrs=['e', 'weight'])
-        H.ndata['weight'] /= np.sqrt(2)  # scale lol
-        return H
 
 
 class TSPDataset(torch.utils.data.Dataset):
     def __init__(self, instances_file, scalers_file=None, nfeat_drop_idx=[], efeat_drop_idx=[]):
         if not isinstance(instances_file, pathlib.Path):
             instances_file = pathlib.Path(instances_file)
+        self.root_dir = instances_file.parent
 
         self.instances = [line.strip() for line in open(instances_file)]
-        self.root_dir = instances_file.parent
+        
         if scalers_file is None:
             scalers_file = self.root_dir / 'scalers.pkl'
         self.scalers = pickle.load(open(scalers_file, 'rb'))
+        
         self.nfeat_drop_idx = nfeat_drop_idx
         self.efeat_drop_idx = efeat_drop_idx
 
-        # cache the graph so we only need to create it once
+        # only works for homogenous datasets
         G = nx.read_gpickle(self.root_dir / self.instances[0])
         lG = nx.line_graph(G)
         for n in lG.nodes:
@@ -114,53 +74,26 @@ class TSPDataset(torch.utils.data.Dataset):
         H = self.get_scaled_features(G)
         return H
 
-    def get_scaled_edge_weight(self, G):
-        x = []
-        for e_i in range(self.G.number_of_nodes()):
-            e = tuple(self.G.ndata['e'][e_i].numpy())  # corresponding edge
-            i, j = e  # nodes from edge
-
-            w = G.edges[e]['weight']
-            x.append([w])
-
-        H = copy.deepcopy(self.G)
-        H.ndata['features'] = torch.tensor(x, dtype=torch.float32) / np.sqrt(2)
-        return H
-
     def get_scaled_features(self, G):
-        e2i = {}
+        features = []
         regret = []
-        efeats = []
-        for i, e in enumerate(G.edges):
-            e2i[e] = i
+        in_solution = []
+        for i in range(self.G.number_of_nodes()):
+            e = tuple(self.G.ndata['e'][i].numpy())  # corresponding edge
+
+            features.append(G.edges[e]['features'])
             regret.append(G.edges[e]['regret'])
-            efeats.append(G.edges[e]['features'])
-        regret = self.scalers['edges']['regret'].transform(np.vstack(regret))
-        efeats = self.scalers['edges']['features'].transform(np.vstack(efeats))
-        efeats = np.delete(efeats, self.efeat_drop_idx, axis=1)
+            in_solution.append(G.edges[e]['in_solution'])
 
-        n2i = {}
-        nfeats = []
-        for i, n in enumerate(G.nodes):
-            n2i[n] = i
-            nfeats.append(G.nodes[n]['features'])
-        nfeats = self.scalers['nodes']['features'].transform(np.vstack(nfeats))
-        nfeats = np.delete(nfeats, self.nfeat_drop_idx, axis=1)
-
-        x = []
-        y = []
-        for e_i in range(self.G.number_of_nodes()):
-            e = tuple(self.G.ndata['e'][e_i].numpy())  # corresponding edge
-            i, j = e  # nodes from edge
-
-            x.append(np.hstack((
-                nfeats[n2i[i]],
-                efeats[e2i[e]],
-                nfeats[n2i[j]]
-            )))
-            y.append(regret[e2i[e]])
+        features = np.vstack(features)
+        features = np.delete(features, self.efeat_drop_idx, axis=1)
+        features_transformed = self.scalers['features'].transform(features)
+        regret = np.vstack(regret)
+        regret_transformed = self.scalers['regret'].transform(regret)
+        in_solution = np.vstack(in_solution)
 
         H = copy.deepcopy(self.G)
-        H.ndata['features'] = torch.tensor(x, dtype=torch.float32)
-        H.ndata['regret'] = torch.tensor(y, dtype=torch.float32)
+        H.ndata['features'] = torch.tensor(features_transformed, dtype=torch.float32)
+        H.ndata['regret'] = torch.tensor(regret_transformed, dtype=torch.float32)
+        H.ndata['in_solution'] = torch.tensor(regret, dtype=torch.float32)
         return H
