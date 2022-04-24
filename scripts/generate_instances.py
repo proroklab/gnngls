@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+
 import gnngls
 import networkx as nx
 import numpy as np

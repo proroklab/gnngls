@@ -1,30 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import os
-backend = 'pytorch'
-os.environ['DGLBACKEND'] = backend
-
-from egls import models, datasets
-
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import dgl
-import dgl.nn
-import numpy as np
-
-import tqdm.auto as tqdm
-import pathlib
-import argparse
-import datetime
-import uuid
-import json
-
-from torch.utils.tensorboard import SummaryWriter
-from torch.utils.data import DataLoader
-from sklearn.metrics import accuracy_score
-
 
 def train(model, data_loader, target, criterion, optimizer, device):
     model.train()
@@ -75,14 +52,29 @@ def save(model, optimizer, epoch, train_loss, val_loss, save_path):
     }, save_path)
 
 if __name__ == '__main__':
+    import torch.nn as nn
+    import dgl
+    import dgl.nn
+    import numpy as np
+    import tqdm.auto as tqdm
+    import pathlib
+    import argparse
+    import datetime
+    import uuid
+    import json
+    import os
+
+    from torch.utils.tensorboard import SummaryWriter
+    from torch.utils.data import DataLoader
+
+    from gnngls import models, datasets
+
     parser = argparse.ArgumentParser(description='Run an experiment')
     parser.add_argument('data_dir', type=pathlib.Path, help='Where to load dataset')
     parser.add_argument('tb_dir', type=pathlib.Path, help='Where to log Tensorboard data')
     parser.add_argument('--embed_dim', type=int, default=128, help='Maximum hidden feature dimension')
     parser.add_argument('--n_layers', type=int, default=3, help='Number of message passing steps')
-    parser.add_argument('--layer_type', type=str, default='gat', choices=['gcn', 'gated_gcn', 'gat', 'gat_mlp', 'gated_gcn_mlp'], help='GNN layer type')
     parser.add_argument('--n_heads', type=int, default=1, help='Number of attention heads for GAT')
-    # parser.add_argument('--activation', type=str, default='relu', choices=['elu', 'relu', 'leaky_relu'], help='Activation function')
     parser.add_argument('--lr_init', type=float, default=1e-3, help='Initial learning rate')
     parser.add_argument('--lr_decay', type=float, default=0.99, help='Learning rate decay')
     parser.add_argument('--min_delta', type=float, default=1e-4, help='Early stopping min delta')
@@ -90,34 +82,27 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
     parser.add_argument('--n_epochs', type=int, default=100, help='Number of epochs')
     parser.add_argument('--checkpoint_freq', type=int, default=None, help='Checkpoint frequency')
-    parser.add_argument('--efeat_drop_idx', type=int, nargs='+', default=[], help='Edge features to drop')
-    parser.add_argument('--nfeat_drop_idx', type=int, nargs='+', default=[], help='Node features to drop')
+    parser.add_argument('--feat_drop_idx', type=int, nargs='+', default=[], help='Edge features to drop')
     parser.add_argument('--target', type=str, default='regret', choices=['regret', 'in_solution'])
     args = parser.parse_args()
 
 
     # Load dataset
-    train_set = datasets.TSPDataset(args.data_dir / 'train.txt', efeat_drop_idx=args.efeat_drop_idx, nfeat_drop_idx=args.nfeat_drop_idx)
-    val_set  = datasets.TSPDataset(args.data_dir / 'val.txt', efeat_drop_idx=args.efeat_drop_idx, nfeat_drop_idx=args.nfeat_drop_idx)
+    train_set = datasets.TSPDataset(args.data_dir / 'train.txt', feat_drop_idx=args.feat_drop_idx)
+    val_set  = datasets.TSPDataset(args.data_dir / 'val.txt', feat_drop_idx=args.feat_drop_idx)
 
     # use GPU if it is available
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('device =', device)
 
-    # activation = getattr(F, args.activation)
-
     n_nodes, feat_dim = train_set[0].ndata['features'].shape
-    #print(n_nodes, feat_dim)
 
     model = models.EdgePropertyPredictionModel(
         feat_dim,
         args.embed_dim,
         1,
         args.n_layers,
-        args.layer_type,
         n_heads=args.n_heads,
-        # activation=activation,
-        dropout=0.
     ).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr_init)
@@ -127,7 +112,7 @@ if __name__ == '__main__':
         criterion = torch.nn.MSELoss()
 
     elif args.target == 'in_solution':
-        # assuming all instances are the same size
+        # only works for a homogenous dataset
         y = train_set[0].ndata['in_solution']
         pos_weight = len(y)/y.sum() - 1
         criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)

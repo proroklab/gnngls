@@ -42,7 +42,7 @@ def set_labels(G):
 
 
 class TSPDataset(torch.utils.data.Dataset):
-    def __init__(self, instances_file, scalers_file=None, nfeat_drop_idx=[], efeat_drop_idx=[]):
+    def __init__(self, instances_file, scalers_file=None, feat_drop_idx=[]):
         if not isinstance(instances_file, pathlib.Path):
             instances_file = pathlib.Path(instances_file)
         self.root_dir = instances_file.parent
@@ -53,8 +53,7 @@ class TSPDataset(torch.utils.data.Dataset):
             scalers_file = self.root_dir / 'scalers.pkl'
         self.scalers = pickle.load(open(scalers_file, 'rb'))
         
-        self.nfeat_drop_idx = nfeat_drop_idx
-        self.efeat_drop_idx = efeat_drop_idx
+        self.feat_drop_idx = feat_drop_idx
 
         # only works for homogenous datasets
         G = nx.read_gpickle(self.root_dir / self.instances[0])
@@ -86,7 +85,7 @@ class TSPDataset(torch.utils.data.Dataset):
             in_solution.append(G.edges[e]['in_solution'])
 
         features = np.vstack(features)
-        features = np.delete(features, self.efeat_drop_idx, axis=1)
+        features = np.delete(features, self.feat_drop_idx, axis=1)
         features_transformed = self.scalers['features'].transform(features)
         regret = np.vstack(regret)
         regret_transformed = self.scalers['regret'].transform(regret)
