@@ -1,12 +1,15 @@
-import numpy as np
 import itertools
+
+import numpy as np
+
 
 def two_opt(tour, i, j):
     if i == j:
         return tour
     elif j < i:
         i, j = j, i
-    return tour[:i] + tour[j-1:i-1:-1] + tour[j:]
+    return tour[:i] + tour[j - 1:i - 1:-1] + tour[j:]
+
 
 def two_opt_cost(tour, D, i, j):
     if i == j:
@@ -20,10 +23,11 @@ def two_opt_cost(tour, D, i, j):
     d = tour[j - 1]
 
     delta = D[a, c] \
-        + D[b, d] \
-        - D[a, b] \
-        - D[c, d]
+            + D[b, d] \
+            - D[a, b] \
+            - D[c, d]
     return delta
+
 
 def two_opt_a2a(tour, D, first_improvement=False):
     best_move = None
@@ -44,6 +48,7 @@ def two_opt_a2a(tour, D, first_improvement=False):
     if best_move is not None:
         return best_delta, two_opt(tour, *best_move)
     return 0, tour
+
 
 def two_opt_o2a(tour, D, i, first_improvement=False):
     assert i > 0 and i < len(tour) - 1
@@ -67,11 +72,13 @@ def two_opt_o2a(tour, D, i, first_improvement=False):
         return best_delta, two_opt(tour, *best_move)
     return 0, tour
 
+
 def relocate(tour, i, j):
     new_tour = tour.copy()
     n = new_tour.pop(i)
     new_tour.insert(j, n)
     return new_tour
+
 
 def relocate_cost(tour, D, i, j):
     if i == j:
@@ -88,15 +95,16 @@ def relocate_cost(tour, D, i, j):
         e = tour[j]
 
     delta = -D[a, b] \
-        - D[b, c] \
-        + D[a, c] \
-        - D[d, e] \
-        + D[d, b] \
-        + D[b, e]
+            - D[b, c] \
+            + D[a, c] \
+            - D[d, e] \
+            + D[d, b] \
+            + D[b, e]
     return delta
 
+
 def relocate_o2a(tour, D, i, first_improvement=False):
-    assert i > 0 and  i < len(tour) - 1
+    assert i > 0 and i < len(tour) - 1
 
     best_move = None
     best_delta = 0
@@ -117,13 +125,14 @@ def relocate_o2a(tour, D, i, first_improvement=False):
         return best_delta, relocate(tour, *best_move)
     return 0, tour
 
+
 def relocate_a2a(tour, D, first_improvement=False):
     best_move = None
     best_delta = 0
 
     idxs = range(1, len(tour) - 1)
     for i, j in itertools.permutations(idxs, 2):
-        if i - j == 1: # e.g. relocate 2 -> 3 == relocate 3 -> 2
+        if i - j == 1:  # e.g. relocate 2 -> 3 == relocate 3 -> 2
             continue
 
         delta = relocate_cost(tour, D, i, j)

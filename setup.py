@@ -1,9 +1,9 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
-setup(name='egls',
-    description='Experience-Guided Local Search',
-    author='Ben Hudson',
-    author_email='bh511@cam.ac.uk',
-    version='0.01',
-    packages=['egls'],
-)
+setup(name='gnngls',
+      description='Graph Neural Network Guided Local Search for the Traveling Salesperson Problem',
+      author='Ben Hudson',
+      author_email='benhudson@fastmail.com',
+      version='0.01',
+      packages=['gnngls'],
+      )

@@ -1,11 +1,12 @@
 import os
+
 backend = 'pytorch'
 os.environ['DGLBACKEND'] = backend
 
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import dgl.nn
+
 
 class SkipConnection(nn.Module):
     def __init__(self, module):
@@ -19,12 +20,13 @@ class SkipConnection(nn.Module):
             y = self.module(x)
         return x + y
 
+
 class AttentionLayer(nn.Module):
     def __init__(self, embed_dim, n_heads, hidden_dim):
         super().__init__()
 
         self.message_passing = SkipConnection(
-            dgl.nn.GATConv(embed_dim, embed_dim//n_heads, n_heads)
+            dgl.nn.GATConv(embed_dim, embed_dim // n_heads, n_heads)
         )
 
         self.feed_forward = nn.Sequential(
@@ -62,7 +64,7 @@ class MLP(nn.Module):
 class GATAndMLP(MLP):
     def __init__(self, embed_dim, hidden_dim, out_dim, n_heads):
         super().__init__(embed_dim, hidden_dim, out_dim)
-        self.msg = dgl.nn.GATConv(embed_dim, embed_dim//n_heads, n_heads)
+        self.msg = dgl.nn.GATConv(embed_dim, embed_dim // n_heads, n_heads)
 
     def forward(self, G, h):
         h = self.msg(G, h).view(G.number_of_nodes(), -1)
@@ -81,15 +83,15 @@ class GGCNAndMLP(MLP):
 
 class EdgePropertyPredictionModel(nn.Module):
     def __init__(
-        self,
-        in_dim,
-        embed_dim,
-        out_dim,
-        n_layers,
-        layer_type,
-        n_heads=1,
-        activation=F.relu,
-        dropout=0.,
+            self,
+            in_dim,
+            embed_dim,
+            out_dim,
+            n_layers,
+            layer_type,
+            n_heads=1,
+            activation=F.relu,
+            dropout=0.,
     ):
         super().__init__()
 

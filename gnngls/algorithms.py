@@ -1,8 +1,10 @@
-import numpy as np
-import networkx as nx
 import time
 
+import networkx as nx
+import numpy as np
+
 from . import tour_cost, operators
+
 
 def nearest_neighbor(G, depot, weight='weight'):
     tour = [depot]
@@ -14,6 +16,7 @@ def nearest_neighbor(G, depot, weight='weight'):
 
     tour.append(depot)
     return tour
+
 
 def probabilistic_nearest_neighbour(G, depot, guide='weight', invert=True):
     tour = [depot]
@@ -38,13 +41,14 @@ def probabilistic_nearest_neighbour(G, depot, guide='weight', invert=True):
 
         # if the guide should be inverted, for example, edge weight
         if invert:
-            p = 1/p
+            p = 1 / p
 
-        j = np.random.choice(nodes, p=p/np.sum(p))
+        j = np.random.choice(nodes, p=p / np.sum(p))
         tour.append(j)
 
     tour.append(depot)
     return tour
+
 
 def best_probabilistic_nearest_neighbour(G, depot, n_iters, guide='weight', weight='weight'):
     best_tour = None
@@ -59,6 +63,7 @@ def best_probabilistic_nearest_neighbour(G, depot, n_iters, guide='weight', weig
 
     return best_tour
 
+
 def cheapest_insertion(G, sub_tour, n, weight='weight'):
     best_tour = None
     best_cost = 0
@@ -72,6 +77,7 @@ def cheapest_insertion(G, sub_tour, n, weight='weight'):
             best_tour, best_cost = new_tour, new_cost
 
     return best_tour
+
 
 def insertion(G, depot, mode='farthest', weight='weight'):
     assert mode in ['random', 'nearest', 'farthest'], f'Unknown mode: {mode}'
@@ -91,8 +97,8 @@ def insertion(G, depot, mode='farthest', weight='weight'):
             for i in tour:
                 for j in nodes:
                     if (mode == 'nearest' and G.edges[i, j][weight] < next_cost) or \
-                        (mode == 'farthest' and G.edges[i, j][weight] > next_cost) or \
-                        (next_node is None):
+                            (mode == 'farthest' and G.edges[i, j][weight] > next_cost) or \
+                            (next_node is None):
                         next_node = j
                         next_cost = G.edges[i, j][weight]
 
@@ -100,6 +106,7 @@ def insertion(G, depot, mode='farthest', weight='weight'):
         tour = cheapest_insertion(G, tour, next_node, weight)
 
     return tour
+
 
 def local_search(init_tour, init_cost, D, first_improvement=False):
     cur_tour, cur_cost = init_tour, init_cost
@@ -121,8 +128,10 @@ def local_search(init_tour, init_cost, D, first_improvement=False):
 
     return cur_tour, cur_cost, progress
 
-def guided_local_search(G, init_tour, init_cost, t_lim, weight='weight', guides=['weight'], perturbation_moves=30, first_improvement=False):
-    k = 0.1*init_cost/len(G.nodes)
+
+def guided_local_search(G, init_tour, init_cost, t_lim, weight='weight', guides=['weight'], perturbation_moves=30,
+                        first_improvement=False):
+    k = 0.1 * init_cost / len(G.nodes)
     nx.set_edge_attributes(G, 0, 'penalty')
 
     edge_weight, _ = nx.attr_matrix(G, weight)
@@ -132,7 +141,7 @@ def guided_local_search(G, init_tour, init_cost, t_lim, weight='weight', guides=
 
     iter_i = 0
     while time.time() < t_lim:
-        guide = guides[iter_i % len(guides)] # option change guide ever iteration (as in KGLS)
+        guide = guides[iter_i % len(guides)]  # option change guide ever iteration (as in KGLS)
 
         # perturbation
         moves = 0
@@ -141,7 +150,7 @@ def guided_local_search(G, init_tour, init_cost, t_lim, weight='weight', guides=
             max_util = 0
             max_util_e = None
             for e in zip(cur_tour[:-1], cur_tour[1:]):
-                util = G.edges[e][guide]/(1 + G.edges[e]['penalty'])
+                util = G.edges[e][guide] / (1 + G.edges[e]['penalty'])
                 if util > max_util or max_util_e is None:
                     max_util = util
                     max_util_e = e
@@ -150,11 +159,11 @@ def guided_local_search(G, init_tour, init_cost, t_lim, weight='weight', guides=
 
             # cur_guided_cost = cur_cost + k*tour_cost(G, cur_tour, weight='penalty')
             edge_penalties, _ = nx.attr_matrix(G, 'penalty')
-            edge_weight_guided = edge_weight + k*edge_penalties
+            edge_weight_guided = edge_weight + k * edge_penalties
 
             # apply operator to edge
             for n in max_util_e:
-                if n != 0: # not the depot
+                if n != 0:  # not the depot
                     i = cur_tour.index(n)
 
                     for operator in [operators.two_opt_o2a, operators.relocate_o2a]:
