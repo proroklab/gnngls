@@ -69,7 +69,7 @@ if __name__ == '__main__':
 
     from gnngls import models, datasets
 
-    parser = argparse.ArgumentParser(description='Run an experiment')
+    parser = argparse.ArgumentParser(description='Train model')
     parser.add_argument('data_dir', type=pathlib.Path, help='Where to load dataset')
     parser.add_argument('tb_dir', type=pathlib.Path, help='Where to log Tensorboard data')
     parser.add_argument('--embed_dim', type=int, default=128, help='Maximum hidden feature dimension')
@@ -95,7 +95,7 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('device =', device)
 
-    n_nodes, feat_dim = train_set[0].ndata['features'].shape
+    _, feat_dim = train_set[0].ndata['features'].shape
 
     model = models.EdgePropertyPredictionModel(
         feat_dim,
