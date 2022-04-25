@@ -163,6 +163,6 @@ cython_debug/
 *.res
 *.sol
 
-data/
-models/
-runs/
+scripts/data
+scripts/models
+scripts/runs
