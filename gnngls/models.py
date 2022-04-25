@@ -1,10 +1,5 @@
-import os
-
-backend = 'pytorch'
-os.environ['DGLBACKEND'] = backend
-
-import torch.nn as nn
 import dgl.nn
+import torch.nn as nn
 
 
 class SkipConnection(nn.Module):
