@@ -2,7 +2,7 @@
 
 Code accompanying the paper [Graph Neural Network Guided Local Search for the Traveling Salesperson Problem](https://arxiv.org/abs/2110.05291).
 
-Want to skip straight to [the example](https://github.com/proroklab/gnngls#example)?
+Want to skip straight to [the example](https://github.com/proroklab/gnngls#minimal-example)?
 
 ## Setup
 We uploaded the test datasets and models using [git lfs](https://git-lfs.github.com/). You must install it to clone the repo correctly.
