@@ -24,7 +24,7 @@ if __name__ == '__main__':
     parser.add_argument('run_dir', type=pathlib.Path)
     parser.add_argument('guides', type=str, nargs='+')
     parser.add_argument('--time_limit', type=float, default=10.)
-    parser.add_argument('--perturbation_moves', type=int, default=30)
+    parser.add_argument('--perturbation_moves', type=int, default=20)
     parser.add_argument('--use_gpu', action='store_true')
     args = parser.parse_args()
 
@@ -115,4 +115,6 @@ if __name__ == '__main__':
 
     timestamp = datetime.datetime.now().strftime('%b%d_%H-%M-%S')
     run_name = f'{timestamp}_{uuid.uuid4().hex}.pkl'
+    if not args.run_dir.exists():
+        args.run_dir.mkdir()
     search_progress_df.to_pickle(args.run_dir / run_name)

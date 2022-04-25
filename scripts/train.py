@@ -73,24 +73,24 @@ if __name__ == '__main__':
     parser.add_argument('tb_dir', type=pathlib.Path, help='Where to log Tensorboard data')
     parser.add_argument('--embed_dim', type=int, default=128, help='Maximum hidden feature dimension')
     parser.add_argument('--n_layers', type=int, default=3, help='Number of message passing steps')
-    parser.add_argument('--n_heads', type=int, default=1, help='Number of attention heads for GAT')
+    parser.add_argument('--n_heads', type=int, default=8, help='Number of attention heads for GAT')
     parser.add_argument('--lr_init', type=float, default=1e-3, help='Initial learning rate')
     parser.add_argument('--lr_decay', type=float, default=0.99, help='Learning rate decay')
     parser.add_argument('--min_delta', type=float, default=1e-4, help='Early stopping min delta')
-    parser.add_argument('--patience', type=int, default=10, help='Early stopping patience')
+    parser.add_argument('--patience', type=int, default=20, help='Early stopping patience')
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
     parser.add_argument('--n_epochs', type=int, default=100, help='Number of epochs')
     parser.add_argument('--checkpoint_freq', type=int, default=None, help='Checkpoint frequency')
-    parser.add_argument('--feat_drop_idx', type=int, nargs='+', default=[], help='Edge features to drop')
     parser.add_argument('--target', type=str, default='regret', choices=['regret', 'in_solution'])
+    parser.add_argument('--use_gpu', action='store_true')
     args = parser.parse_args()
 
     # Load dataset
-    train_set = datasets.TSPDataset(args.data_dir / 'train.txt', feat_drop_idx=args.feat_drop_idx)
-    val_set = datasets.TSPDataset(args.data_dir / 'val.txt', feat_drop_idx=args.feat_drop_idx)
+    train_set = datasets.TSPDataset(args.data_dir / 'train.txt')
+    val_set = datasets.TSPDataset(args.data_dir / 'val.txt')
 
     # use GPU if it is available
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda' if args.use_gpu and torch.cuda.is_available() else 'cpu')
     print('device =', device)
 
     _, feat_dim = train_set[0].ndata['features'].shape
