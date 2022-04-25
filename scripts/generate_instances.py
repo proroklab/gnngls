@@ -1,17 +1,24 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import gnngls
+import argparse
+import itertools
+import multiprocessing as mp
+import pathlib
+import uuid
+
 import networkx as nx
 import numpy as np
-import itertools
 
+import gnngls
 from gnngls import datasets
+
 
 def prepare_instance(G):
     datasets.set_features(G)
     datasets.set_labels(G)
     return G
+
 
 def get_solved_instances(n_nodes, n_instances):
     for _ in range(n_instances):
@@ -31,12 +38,8 @@ def get_solved_instances(n_nodes, n_instances):
 
         yield G
 
-if __name__ == '__main__':
-    import pathlib
-    import uuid
-    import argparse
-    import multiprocessing as mp
 
+if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate a dataset.')
     parser.add_argument('n_samples', type=int)
     parser.add_argument('n_nodes', type=int)

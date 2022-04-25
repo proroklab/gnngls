@@ -181,7 +181,7 @@ def guided_local_search(G, init_tour, init_cost, t_lim, weight='weight', guides=
                                 'time': time.time(),
                                 'cost': cur_cost
                             })
-                        
+
                         moves += moved
 
         # optimisation

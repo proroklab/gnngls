@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import argparse
+import pathlib
+import pickle
+import random
+
+import networkx as nx
+import numpy as np
+import tqdm.auto as tqdm
+from sklearn.preprocessing import MinMaxScaler
+
 if __name__ == '__main__':
-    import argparse
-    import pathlib
-    import numpy as np
-    import networkx as nx
-    import tqdm.auto as tqdm
-    import pickle
-    import random
-
-    from sklearn.preprocessing import MinMaxScaler
-
     parser = argparse.ArgumentParser(description='Preprocess a dataset.')
     parser.add_argument('dir', type=pathlib.Path)
     parser.add_argument('--n_train', type=int, default=100000)

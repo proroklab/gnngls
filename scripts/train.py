@@ -1,7 +1,21 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import argparse
+import datetime
+import json
+import os
+import pathlib
+import uuid
+
+import dgl.nn
 import torch
+import tqdm.auto as tqdm
+from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
+
+from gnngls import models, datasets
+
 
 def train(model, data_loader, target, criterion, optimizer, device):
     model.train()
@@ -42,33 +56,18 @@ def test(model, data_loader, target, criterion, device):
         epoch_loss /= (batch_i + 1)
         return epoch_loss
 
+
 def save(model, optimizer, epoch, train_loss, val_loss, save_path):
     torch.save({
-    'epoch': epoch,
-    'model_state_dict': model.state_dict(),
-    'optimizer_state_dict': optimizer.state_dict(),
-    'loss': train_loss,
-    'val_loss': val_loss
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': train_loss,
+        'val_loss': val_loss
     }, save_path)
 
+
 if __name__ == '__main__':
-    import torch.nn as nn
-    import dgl
-    import dgl.nn
-    import numpy as np
-    import tqdm.auto as tqdm
-    import pathlib
-    import argparse
-    import datetime
-    import uuid
-    import json
-    import os
-
-    from torch.utils.tensorboard import SummaryWriter
-    from torch.utils.data import DataLoader
-
-    from gnngls import models, datasets
-
     parser = argparse.ArgumentParser(description='Train model')
     parser.add_argument('data_dir', type=pathlib.Path, help='Where to load dataset')
     parser.add_argument('tb_dir', type=pathlib.Path, help='Where to log Tensorboard data')
@@ -86,10 +85,9 @@ if __name__ == '__main__':
     parser.add_argument('--target', type=str, default='regret', choices=['regret', 'in_solution'])
     args = parser.parse_args()
 
-
     # Load dataset
     train_set = datasets.TSPDataset(args.data_dir / 'train.txt', feat_drop_idx=args.feat_drop_idx)
-    val_set  = datasets.TSPDataset(args.data_dir / 'val.txt', feat_drop_idx=args.feat_drop_idx)
+    val_set = datasets.TSPDataset(args.data_dir / 'val.txt', feat_drop_idx=args.feat_drop_idx)
 
     # use GPU if it is available
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -114,11 +112,13 @@ if __name__ == '__main__':
     elif args.target == 'in_solution':
         # only works for a homogenous dataset
         y = train_set[0].ndata['in_solution']
-        pos_weight = len(y)/y.sum() - 1
+        pos_weight = len(y) / y.sum() - 1
         criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
-    train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, collate_fn=dgl.batch, num_workers=os.cpu_count())
-    val_loader = DataLoader(val_set, batch_size=args.batch_size, shuffle=True, collate_fn=dgl.batch, num_workers=os.cpu_count())
+    train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, collate_fn=dgl.batch,
+                              num_workers=os.cpu_count())
+    val_loader = DataLoader(val_set, batch_size=args.batch_size, shuffle=True, collate_fn=dgl.batch,
+                            num_workers=os.cpu_count())
 
     timestamp = datetime.datetime.now().strftime('%b%d_%H-%M-%S')
     run_name = f'{timestamp}_{uuid.uuid4().hex}'

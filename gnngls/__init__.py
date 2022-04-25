@@ -1,4 +1,9 @@
+import concorde.tsp as concorde
+import lkh
+import networkx as nx
 import numpy as np
+import tsplib95
+from matplotlib import colors
 
 
 def tour_to_edge_attribute(G, tour):
@@ -40,8 +45,6 @@ def is_valid_tour(G, tour):
 
 
 def optimal_tour(G, scale=1e3):
-    import concorde.tsp as concorde
-
     coords = scale * np.vstack([G.nodes[n]['pos'] for n in sorted(G.nodes)])
     solver = concorde.TSPSolver.from_data(coords[:, 0], coords[:, 1], norm='EUC_2D')
     solution = solver.solve()
@@ -58,9 +61,6 @@ def optimal_cost(G, weight='weight'):
 
 
 def fixed_edge_tour(G, e, scale=1e3, lkh_path='LKH', **kwargs):
-    import tsplib95
-    import lkh
-
     problem = tsplib95.models.StandardProblem()
     problem.name = 'TSP'
     problem.type = 'TSP'
@@ -75,9 +75,6 @@ def fixed_edge_tour(G, e, scale=1e3, lkh_path='LKH', **kwargs):
 
 
 def plot_edge_attribute(G, attr, ax, **kwargs):
-    import networkx as nx
-    from matplotlib import colors
-
     cmap_colors = np.zeros((100, 4))
     cmap_colors[:, 0] = 1
     cmap_colors[:, 3] = np.linspace(0, 1, 100)
