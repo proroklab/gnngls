@@ -1,16 +1,12 @@
-import os
+import copy
+import pathlib
+import pickle
 
-backend = 'pytorch'
-os.environ['DGLBACKEND'] = backend
-
+import dgl
+import networkx as nx
+import numpy as np
 import torch
 import torch.utils.data
-import dgl
-import numpy as np
-import networkx as nx
-import pickle
-import pathlib
-import copy
 
 from . import tour_cost, fixed_edge_tour, optimal_cost as get_optimal_cost
 
