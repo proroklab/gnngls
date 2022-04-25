@@ -44,7 +44,11 @@ class TSPDataset(torch.utils.data.Dataset):
 
         if scalers_file is None:
             scalers_file = self.root_dir / 'scalers.pkl'
-        self.scalers = pickle.load(open(scalers_file, 'rb'))
+        scalers = pickle.load(open(scalers_file, 'rb'))
+        if 'edges' in scalers: # for backward compatability
+            self.scalers = scalers['edges']
+        else:
+            self.scalers = scalers
 
         self.feat_drop_idx = feat_drop_idx
 
@@ -78,8 +82,8 @@ class TSPDataset(torch.utils.data.Dataset):
             in_solution.append(G.edges[e]['in_solution'])
 
         features = np.vstack(features)
-        features = np.delete(features, self.feat_drop_idx, axis=1)
         features_transformed = self.scalers['features'].transform(features)
+        features_transformed = np.delete(features_transformed, self.feat_drop_idx, axis=1)
         regret = np.vstack(regret)
         regret_transformed = self.scalers['regret'].transform(regret)
         in_solution = np.vstack(in_solution)

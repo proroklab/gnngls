@@ -14,7 +14,9 @@ We uploaded the test datasets and models using [git lfs](https://git-lfs.github.
 5. Run `pipenv shell` to activate the environment
 
 ## Datasets
-We have separated dataset generation into two parts: instance generation and preprocessing. You can generate solved TSP instances using:
+The test datasets used in the paper are found in [data](https://github.com/proroklab/gnngls/tree/master/data).
+
+You can also generate new datasets in two steps: instance generation and preprocessing. You can generate solved TSP instances using:
 ```
 ./generate_instances.py <number of instances to generate> <number of nodes> <dataset directory>
 ```
@@ -43,7 +45,12 @@ Evaluate the model using:
 ```
 The default optional arguments are those used in the paper. The search progress for all instances in the dataset will be written to the specified run directory as a pickled `pandas.DataFrame`.
 
-## Example
+For example, you can run the pretrained model using:
+```
+./test.py ../data/tsp100/test.txt ../models/tsp20/checkpoint_best_val.pt ../runs regret_pred --use_gpu
+```
+
+## Minimal Example
 The following is a simple demonstration to help you get started 🙂
 ```
 pipenv install
@@ -58,10 +65,11 @@ python test.py data/test.txt models/<new model directory>/checkpoint_best_val.pt
 ## Citation
 If you this code is useful in your research, please cite our paper:
 ```
-@inproceedings{hudson2022gnngls,
-  title = {Graph Neural Network Guided Local Search for the Traveling Salesperson Problem},
-  author = {Hudson, Benjamin and Li, Qingbiao and Malencia, Matthew and Prorok, Amanda},
-  booktitle = {International Conference on Learning Representations},
-  year = {2022},
+@inproceedings{hudson2022graph,
+    title={Graph Neural Network Guided Local Search for the Traveling Salesperson Problem},
+    author={Benjamin Hudson and Qingbiao Li and Matthew Malencia and Amanda Prorok},
+    booktitle={International Conference on Learning Representations},
+    year={2022},
+    url={https://openreview.net/forum?id=ar92oEosBIg}
 }
 ```
