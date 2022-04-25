@@ -2,12 +2,16 @@
 
 Code accompanying the paper [Graph Neural Network Guided Local Search for the Traveling Salesperson Problem](https://arxiv.org/abs/2110.05291).
 
-Want to skip straight to the [example](https://github.com/ben-hudson/gnngls#example)?
+Want to skip straight to [the example](https://github.com/proroklab/gnngls#example)?
 
 ## Setup
-Requires [pipenv](https://pipenv.pypa.io).
+We uploaded the test datasets and models using [git lfs](https://git-lfs.github.com/). You must install it to clone the repo correctly.
 
-Run `pipenv install` in the root directory. Then, run `pipenv shell` to activate the environment.
+1. Install [git lfs](https://git-lfs.github.com/)
+2. Install [pipenv](https://pipenv.pypa.io)
+3. Clone the repo
+4. Navigate to the repo and run `pipenv install` in the root directory
+5. Run `pipenv shell` to activate the environment
 
 ## Datasets
 We have separated dataset generation into two parts: instance generation and preprocessing. You can generate solved TSP instances using:
