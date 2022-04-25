@@ -15,10 +15,11 @@ name = "dgl"
 
 [packages]
 jupyter = "*"
+matplotlib = "*"
 pandas = "*"
+tensorboard = "*"
 tqdm = "*"
 scikit-learn = "*"
-tensorboard = "*"
 torch = {version = "*", index = "pytorch"}
 torchvision = {version = "*", index = "pytorch"}
 torchaudio = {version = "*", index = "pytorch"}
