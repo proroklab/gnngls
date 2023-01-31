@@ -56,7 +56,7 @@ The following is a simple demonstration to help you get started 🙂
 pipenv install
 pipenv shell
 cd scripts
-python generate_instances.py 10 500 data
+python generate_instances.py 500 10 data
 python preprocess_dataset.py data --n_train 400 --n_val 50 --n_test 50
 python train.py data models --use_gpu
 python test.py data/test.txt models/<new model directory>/checkpoint_best_val.pt runs regret_pred --use_gpu
