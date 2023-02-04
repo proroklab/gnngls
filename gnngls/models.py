@@ -1,4 +1,4 @@
-import dgl.nn
+import torch_geometric.nn as pyg
 import torch.nn as nn
 
 
@@ -20,7 +20,7 @@ class AttentionLayer(nn.Module):
         super().__init__()
 
         self.message_passing = SkipConnection(
-            dgl.nn.GATConv(embed_dim, embed_dim // n_heads, n_heads)
+            pyg.GATv2Conv(embed_dim, embed_dim // n_heads, n_heads)
         )
 
         self.feed_forward = nn.Sequential(
