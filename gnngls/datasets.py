@@ -2,7 +2,7 @@ import copy
 import pathlib
 import pickle
 
-from torch_geometric.utils import from_networkx
+import dgl
 import networkx as nx
 import numpy as np
 import torch
@@ -57,7 +57,7 @@ class TSPDataset(torch.utils.data.Dataset):
         lG = nx.line_graph(G)
         for n in lG.nodes:
             lG.nodes[n]['e'] = n
-        self.G = from_networkx(lG, node_attrs=['e'])
+        self.G = dgl.from_networkx(lG, node_attrs=['e'])
 
     def __len__(self):
         return len(self.instances)
