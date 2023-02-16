@@ -12,12 +12,6 @@ INITIAL_PHEROMONE = 0.0001
 CROSSOVER_PROBABILITY = 0.8
 MUTATION_PROBABILITY = 0.2
 
-# Load TSP instance
-def load_tsp_instance():
-    G = nx.Graph()
-    G.add_nodes_from(range(10))
-    G.add_weighted_edges_from([(i, j, random.randint(1, 10)) for i in range(10) for j in range(i + 1, 10)])
-    return G
 
 # Define cost function
 def cost_function(G, solution):
