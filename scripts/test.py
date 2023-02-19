@@ -16,6 +16,7 @@ import tqdm.auto as tqdm
 
 import gnngls
 from gnngls import algorithms, models, datasets
+from gnngls.aco_ga import aco_search_with_regret
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test model')
@@ -82,17 +83,16 @@ if __name__ == '__main__':
             for e, regret_pred_i in zip(es, regret_pred):
                 G.edges[e]['regret_pred'] = np.maximum(regret_pred_i.item(), 0)
 
+            # Initialize the tour with nearest neighbor by the regrets
             init_tour = algorithms.nearest_neighbor(G, 0, weight='regret_pred')
 
         else:
             init_tour = algorithms.nearest_neighbor(G, 0, weight='weight')
 
         init_cost = gnngls.tour_cost(G, init_tour)
-        best_tour, best_cost, search_progress_i = algorithms.guided_local_search(G, init_tour, init_cost,
-                                                                                 t + args.time_limit, weight='weight',
-                                                                                 guides=args.guides,
-                                                                                 perturbation_moves=args.perturbation_moves,
-                                                                                 first_improvement=False)
+
+        # Use guided local search to find the best tour
+        best_tour, best_cost, search_progress_i = aco_search_with_regret(G)
 
         for row in search_progress_i:
             row.update({
